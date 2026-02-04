@@ -15,6 +15,7 @@ import {
 } from 'firebase/firestore'
 import { db } from '@/lib/firebase/client'
 import { Event, Race } from '@/types/events'
+import CSVImport from '@/components/CSVImport'
 
 export default function EventDetailPage() {
   const router = useRouter()
@@ -26,6 +27,7 @@ export default function EventDetailPage() {
   const [loading, setLoading] = useState(true)
   const [selectedClass, setSelectedClass] = useState<string>('all')
   const [showAddRaceModal, setShowAddRaceModal] = useState(false)
+  const [showCSVImport, setShowCSVImport] = useState(false)
   const [newRace, setNewRace] = useState({
     racerName: '',
     racerNumber: '',
@@ -208,12 +210,20 @@ export default function EventDetailPage() {
               </div>
             </div>
             {canAddRaces && (
-              <button
-                onClick={() => setShowAddRaceModal(true)}
-                className="rounded-lg bg-red-600 px-6 py-3 font-semibold text-white transition-colors hover:bg-red-700"
-              >
-                Add Race Result
-              </button>
+              <div className="flex gap-3">
+                <button
+                  onClick={() => setShowCSVImport(true)}
+                  className="rounded-lg border border-red-600 px-6 py-3 font-semibold text-red-600 transition-colors hover:bg-red-600 hover:text-white"
+                >
+                  Import CSV
+                </button>
+                <button
+                  onClick={() => setShowAddRaceModal(true)}
+                  className="rounded-lg bg-red-600 px-6 py-3 font-semibold text-white transition-colors hover:bg-red-700"
+                >
+                  Add Race Result
+                </button>
+              </div>
             )}
           </div>
         </div>
@@ -496,6 +506,18 @@ export default function EventDetailPage() {
             </form>
           </div>
         </div>
+      )}
+
+      {/* CSV Import Modal */}
+      {showCSVImport && event && (
+        <CSVImport
+          eventId={eventId}
+          divisionId={event.divisionId}
+          onImportComplete={(importedRaces) => {
+            setRaces([...importedRaces, ...races])
+          }}
+          onClose={() => setShowCSVImport(false)}
+        />
       )}
     </div>
   )
