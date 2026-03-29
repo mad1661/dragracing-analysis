@@ -1,0 +1,124 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Apps - Timing Talk</title>
+  <link rel="stylesheet" href="/styles.css">
+</head>
+<body data-nav-primary="dashboard">
+
+  <div class="hero">
+    <h1>Online Apps</h1>
+    <p>Ready-to-use tools powered by live timing data. No setup, no installs -- just open and use.</p>
+  </div>
+
+  <div class="page">
+    <!-- Live Track Directory -->
+    <div class="card card-highlight">
+      <h3>&#128225; Live Track Directory</h3>
+      <p>See every connected track in real-time. View which tracks are online right now and browse their data.</p>
+      <div id="liveTrackContent">
+        <div class="text-dim text-small">Loading tracks...</div>
+      </div>
+      <button class="btn btn-outline btn-small mt-2" onclick="loadTracks()" id="refreshTracks">Refresh</button>
+    </div>
+
+    <h2>Featured Apps</h2>
+    <div class="card-grid">
+      <div class="card card-highlight">
+        <h3>&#127937; Raw Timing Browser</h3>
+        <p>Browse runs, timeslips, schedule sessions, and no-shows from Timing Talk's raw parser. Pick the device by track or promoter name.</p>
+        <a href="/raw/?view=runs" class="btn btn-primary btn-small">Open Raw Browser</a>
+      </div>
+      <div class="card">
+        <h3>&#128221; Run Log</h3>
+        <p>A spreadsheet-style page that lists the pairs that have already run down the track.</p>
+        <a href="/run-log.html" class="btn btn-primary btn-small">Open Run Log</a>
+      </div>
+      <div class="card">
+        <h3>&#128200; Live Scoreboard</h3>
+        <p>Full-screen scoreboard view designed for pit monitors and spectator screens. Pick a track and display results as they happen.</p>
+        <span class="badge badge-new">Coming Soon</span>
+      </div>
+      <div class="card">
+        <h3>&#9201; Timeslip Viewer</h3>
+        <p>Renders timeslip data into print-ready visual timeslips. Great for racers who want a digital copy instantly.</p>
+        <a href="/raw/?view=timeslip" class="btn btn-primary btn-small">Open Timeslips</a>
+      </div>
+      <div class="card">
+        <h3>&#128202; Race Analytics</h3>
+        <p>Charts, statistics, and historical analysis for any track. Track your performance over time across events.</p>
+        <a href="/statistics.html" class="btn btn-primary btn-small">Open Statistics</a>
+      </div>
+      <div class="card">
+        <h3>&#128226; Announcer Dashboard</h3>
+        <p>Real-time data feed formatted for race announcers. Big numbers, key stats, vehicle info at a glance.</p>
+        <span class="badge badge-new">Coming Soon</span>
+      </div>
+      <div class="card">
+        <h3>&#128241; Mobile Results</h3>
+        <p>Mobile-optimized live results page. Share a link and let fans follow along from their phones.</p>
+        <span class="badge badge-new">Coming Soon</span>
+      </div>
+      <div class="card">
+        <h3>&#127942; Bracket Tracker</h3>
+        <p>Elimination bracket display that updates automatically as rounds are completed.</p>
+        <a href="/brackets.html" class="btn btn-primary btn-small">Open Brackets</a>
+      </div>
+    </div>
+
+    <h2>Build Your Own</h2>
+    <div class="card">
+      <p>All our apps are built on the same public API that you have access to. Want to build something custom? Grab an API key and start building.</p>
+      <div class="btn-row">
+        <a href="/dashboard.html" class="btn btn-primary">Get an API Key</a>
+        <a href="/docs.html" class="btn btn-outline">Read the Docs</a>
+      </div>
+    </div>
+  </div>
+
+  <div class="footer">Timing Talk &middot; NHRA Timing API</div>
+
+  <script src="/shell.js"></script>
+  <script src="/auth.js"></script>
+  <script>
+    initFirebase();
+
+    async function handleSignOut() {
+      await signOut();
+      location.reload();
+    }
+
+    loadTracks();
+
+    async function loadTracks() {
+      const el = document.getElementById("liveTrackContent");
+      try {
+        const res = await fetch("/api/tracks?online=true");
+        if (!res.ok) throw new Error("API not available");
+        const data = await res.json();
+        if (!data.tracks || data.tracks.length === 0) {
+          el.innerHTML = '<p class="text-dim text-small">No tracks are online right now. Check back during an event.</p>';
+          return;
+        }
+        el.innerHTML = '<div style="display:grid;gap:0.5rem;">' + data.tracks.map(t => `
+          <div class="key-card">
+            <div class="key-info">
+              <div class="key-label">${t.name || t.trackName || t.promoter || "Unnamed Track"}</div>
+              <div class="key-prefix">${t.location || t.trackLocation || ""}</div>
+            </div>
+            <div class="btn-row" style="margin-top:0;">
+              <a class="btn btn-small btn-outline" href="/run-log.html?deviceId=${encodeURIComponent(t.deviceId)}">Open Log</a>
+              <a class="btn btn-small btn-outline" href="/raw/?view=runs&deviceId=${encodeURIComponent(t.deviceId)}">Open Raw</a>
+              <span class="badge badge-public" style="background:#064e3b;color:#34d399;">LIVE</span>
+            </div>
+          </div>
+        `).join("") + '</div>';
+      } catch (e) {
+        el.innerHTML = '<p class="text-dim text-small">Track directory will populate once the API is deployed and Pi devices connect.</p>';
+      }
+    }
+  </script>
+</body>
+</html>

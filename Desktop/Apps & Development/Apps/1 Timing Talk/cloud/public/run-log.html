@@ -1,0 +1,219 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Run Log - Timing Talk</title>
+  <link rel="stylesheet" href="/styles.css">
+</head>
+<body data-nav-utility="runlog">
+
+  <div class="page page-wide">
+    <div class="card">
+      <h1 style="font-size:1.6rem; margin-bottom:0.5rem; color:var(--accent);">Run Log</h1>
+      <p>Choose the promoter, track, and event to view the pairs that have run.</p>
+      <label for="trackPicker">Promoter / Track / Event</label>
+      <div class="btn-row">
+        <select id="trackPicker" onchange="handleTrackChange()">
+          <option value="">Loading tracks...</option>
+        </select>
+        <button class="btn btn-outline" onclick="loadTracks()">Refresh</button>
+      </div>
+      <p id="pageStatus" class="text-small text-dim">Loading live tracks...</p>
+      <div class="btn-row" style="justify-content:space-between;">
+        <div>
+          <div id="logTitle" class="key-label">No track selected</div>
+          <div id="logSubtitle" class="key-prefix">Pick a track and event from the dropdown.</div>
+        </div>
+        <span class="badge badge-public" id="runCountBadge">0 runs</span>
+      </div>
+    </div>
+
+    <div class="table-scroll">
+      <table class="table-spreadsheet">
+        <thead>
+          <tr>
+            <th>#</th>
+            <th>Time</th>
+            <th>Lane</th>
+            <th class="lane-cell">Driver</th>
+            <th>Car</th>
+            <th>Class</th>
+            <th>Dial</th>
+            <th>RT</th>
+            <th>ET</th>
+            <th>MPH</th>
+            <th>Winner</th>
+            <th>Margin</th>
+            <th>Round</th>
+            <th>Category</th>
+          </tr>
+        </thead>
+        <tbody id="runsBody">
+          <tr>
+            <td colspan="12" class="text-dim">Loading...</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+  <div class="footer">Timing Talk &middot; Run Log</div>
+
+  <script src="/shell.js"></script>
+  <script src="/auth.js"></script>
+  <script>
+    var currentDeviceId = "";
+    var refreshTimer = null;
+
+    initFirebase();
+    loadTracks();
+
+    function escapeHtml(value) {
+      return String(value || "")
+        .replace(/&/g, "&amp;")
+        .replace(/</g, "&lt;")
+        .replace(/>/g, "&gt;")
+        .replace(/"/g, "&quot;")
+        .replace(/'/g, "&#39;");
+    }
+
+    async function handleSignOut() {
+      await signOut();
+      location.reload();
+    }
+
+    async function loadTracks() {
+      var picker = document.getElementById("trackPicker");
+      var status = document.getElementById("pageStatus");
+      var queryId = new URLSearchParams(location.search).get("deviceId");
+
+      status.textContent = "Loading live tracks...";
+      try {
+        var res = await fetch("/api/tracks?online=true");
+        if (!res.ok) throw new Error("Failed to load tracks");
+        var data = await res.json();
+        var tracks = data.tracks || [];
+
+        if (!tracks.length) {
+          picker.innerHTML = '<option value="">No live tracks</option>';
+          document.getElementById("runsBody").innerHTML = '<tr><td colspan="12" class="text-dim">No live tracks are online right now.</td></tr>';
+          status.textContent = "No live tracks online.";
+          return;
+        }
+
+        picker.innerHTML = tracks.map(function(track) {
+          var selectedId = currentDeviceId || queryId || tracks[0].deviceId;
+          var selected = track.deviceId === selectedId ? " selected" : "";
+          var primary = track.name || track.trackName || track.promoter || track.deviceId;
+          var secondary = track.raceName || track.location || track.trackLocation || "";
+          var label = secondary ? primary + " - " + secondary : primary;
+          return '<option value="' + escapeHtml(track.deviceId) + '"' + selected + '>' +
+            escapeHtml(label) +
+            '</option>';
+        }).join("");
+
+        currentDeviceId = picker.value;
+        status.textContent = tracks.length + " live track" + (tracks.length === 1 ? "" : "s") + " found.";
+        loadRuns();
+      } catch (error) {
+        picker.innerHTML = '<option value="">Unavailable</option>';
+        document.getElementById("runsBody").innerHTML = '<tr><td colspan="12" class="text-dim">Could not load live tracks.</td></tr>';
+        status.textContent = error.message;
+      }
+    }
+
+    function handleTrackChange() {
+      currentDeviceId = document.getElementById("trackPicker").value;
+      var url = new URL(location.href);
+      url.searchParams.set("deviceId", currentDeviceId);
+      history.replaceState({}, "", url.toString());
+      loadRuns();
+    }
+
+    async function loadRuns() {
+      var body = document.getElementById("runsBody");
+      var badge = document.getElementById("runCountBadge");
+      var title = document.getElementById("logTitle");
+      var subtitle = document.getElementById("logSubtitle");
+
+      currentDeviceId = document.getElementById("trackPicker").value;
+      if (!currentDeviceId) {
+        body.innerHTML = '<tr><td colspan="12" class="text-dim">Pick a live track to view the run log.</td></tr>';
+        title.textContent = "No track selected";
+        subtitle.textContent = "Pick a live track to load completed pairs.";
+        badge.textContent = "0 runs";
+        return;
+      }
+
+      body.innerHTML = '<tr><td colspan="12" class="text-dim">Loading run log...</td></tr>';
+
+      try {
+        var res = await fetch("/api/pairs/" + encodeURIComponent(currentDeviceId) + "?limit=200");
+        if (!res.ok) throw new Error("Failed to load run log");
+        var data = await res.json();
+        var runs = data.runs || [];
+        var displayName = data.name || data.trackName || data.promoter || currentDeviceId;
+        var eventName = data.raceName || data.trackLocation || "";
+
+        title.textContent = displayName;
+        subtitle.textContent = eventName || currentDeviceId;
+        badge.textContent = runs.length + " runs";
+
+        if (!runs.length) {
+          body.innerHTML = '<tr><td colspan="12" class="text-dim">No completed pairs have been logged for this track yet.</td></tr>';
+        } else {
+          body.innerHTML = runs.map(function(run, index) {
+            var pairClass = index % 2 === 0 ? "pair-row-a pair-accent-a" : "pair-row-b pair-accent-b";
+            var winner = (run.winner || "").toUpperCase();
+            var leftWinner = winner === "LEFT" ? "LEFT" : "";
+            var rightWinner = winner === "RIGHT" ? "RIGHT" : "";
+            var margin = run.margin || run.left.mov || run.right.mov || "";
+
+            return [
+              '<tr class="' + pairClass + ' pair-row-top">',
+              '<td class="mono">' + (index + 1) + '</td>',
+              '<td class="mono">' + escapeHtml(run.timestamp) + '</td>',
+              '<td><span class="lane-badge lane-left">Left</span></td>',
+              '<td>' + escapeHtml(run.left.name) + '</td>',
+              '<td class="mono">' + escapeHtml(run.left.car_num) + '</td>',
+              '<td>' + escapeHtml(run.left.class_name) + '</td>',
+              '<td class="mono">' + escapeHtml(run.left.dial_in) + '</td>',
+              '<td class="mono">' + escapeHtml(run.left.rt) + '</td>',
+              '<td class="mono">' + escapeHtml(run.left.et) + '</td>',
+              '<td class="mono">' + escapeHtml(run.left.speed) + '</td>',
+              '<td class="mono">' + escapeHtml(leftWinner) + '</td>',
+              '<td class="mono">' + escapeHtml(margin) + '</td>',
+              '<td>' + escapeHtml(run.round) + '</td>',
+              '<td>' + escapeHtml(run.category) + '</td>',
+              '</tr>',
+              '<tr class="' + pairClass + ' pair-row-bottom">',
+              '<td class="mono">' + (index + 1) + '</td>',
+              '<td class="mono">' + escapeHtml(run.timestamp) + '</td>',
+              '<td><span class="lane-badge lane-right">Right</span></td>',
+              '<td>' + escapeHtml(run.right.name) + '</td>',
+              '<td class="mono">' + escapeHtml(run.right.car_num) + '</td>',
+              '<td>' + escapeHtml(run.right.class_name) + '</td>',
+              '<td class="mono">' + escapeHtml(run.right.dial_in) + '</td>',
+              '<td class="mono">' + escapeHtml(run.right.rt) + '</td>',
+              '<td class="mono">' + escapeHtml(run.right.et) + '</td>',
+              '<td class="mono">' + escapeHtml(run.right.speed) + '</td>',
+              '<td class="mono">' + escapeHtml(rightWinner) + '</td>',
+              '<td class="mono">' + escapeHtml(margin) + '</td>',
+              '<td>' + escapeHtml(run.round) + '</td>',
+              '<td>' + escapeHtml(run.category) + '</td>',
+              '</tr>'
+            ].join("");
+          }).join("");
+        }
+
+        clearInterval(refreshTimer);
+        refreshTimer = setInterval(loadRuns, 15000);
+      } catch (error) {
+        body.innerHTML = '<tr><td colspan="12" class="text-dim">Could not load the run log.</td></tr>';
+        subtitle.textContent = error.message;
+      }
+    }
+  </script>
+</body>
+</html>

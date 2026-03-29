@@ -1,0 +1,615 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Statistics — Timing Talk</title>
+<link rel="stylesheet" href="/styles.css">
+<style>
+/* ── Page Layout ─────────────────────────────────────────────────── */
+.stats-page { max-width: 80rem; margin: 0 auto; padding: 0 1rem 3rem; }
+
+/* ── Section Cards ───────────────────────────────────────────────── */
+.stats-section {
+  background: rgba(10,16,34,0.92);
+  border: 1px solid rgba(255,255,255,0.08);
+  border-radius: 14px;
+  padding: 1.5rem;
+  margin-bottom: 1.5rem;
+  position: relative;
+  overflow: hidden;
+}
+.stats-section::before {
+  content: '';
+  position: absolute;
+  left: 0; top: 0; bottom: 0;
+  width: 4px;
+  border-radius: 14px 0 0 14px;
+}
+.stats-section--perf::before { background: #C8102E; }
+.stats-section--bracket::before { background: #003DA5; }
+
+/* ── Section Header ──────────────────────────────────────────────── */
+.section-header {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  margin-bottom: 1.25rem;
+}
+.section-title {
+  font-size: 1rem;
+  font-weight: 700;
+  color: #e8e8f0;
+  letter-spacing: 0.01em;
+}
+.section-badge {
+  font-size: 0.65rem;
+  font-weight: 700;
+  padding: 0.15rem 0.55rem;
+  border-radius: 999px;
+  color: rgba(255,255,255,0.7);
+}
+.section-badge--perf { background: rgba(200,16,46,0.25); }
+.section-badge--bracket { background: rgba(0,61,165,0.25); }
+
+/* ── Tables ──────────────────────────────────────────────────────── */
+.stats-scroll { overflow-x: auto; scrollbar-width: thin; scrollbar-color: rgba(255,255,255,0.1) transparent; }
+.stats-table { width: 100%; border-collapse: collapse; font-size: 0.75rem; }
+.stats-table th {
+  position: sticky; top: 0; z-index: 2;
+  padding: 0.5rem 0.5rem;
+  font-size: 0.6rem; font-weight: 800;
+  letter-spacing: 0.1em; text-transform: uppercase;
+  color: rgba(255,255,255,0.4);
+  background: rgba(10,16,34,0.98);
+  border-bottom: 1px solid rgba(255,255,255,0.1);
+  white-space: nowrap; text-align: center;
+}
+.stats-table th:first-child { text-align: left; }
+.stats-table td {
+  padding: 0.45rem 0.5rem;
+  font-family: 'SF Mono','Fira Code','Consolas',monospace;
+  font-weight: 600; text-align: center;
+  border-bottom: 1px solid rgba(255,255,255,0.04);
+  white-space: nowrap; vertical-align: middle;
+  color: rgba(255,255,255,0.5);
+}
+.stats-table tr:hover { background: rgba(255,255,255,0.03); }
+.stats-table td:first-child {
+  font-family: -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;
+  font-weight: 600; text-align: left; color: #e8e8f0;
+}
+.td-white { color: #e8e8f0 !important; font-weight: 700 !important; }
+.td-green { color: #22c55e !important; }
+.td-red   { color: #ef4444 !important; }
+.td-gray4 { color: rgba(255,255,255,0.45) !important; }
+.td-mono  { font-family: 'SF Mono','Fira Code','Consolas',monospace !important; }
+
+/* ── Chart Grid ──────────────────────────────────────────────────── */
+.chart-grid {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 1.25rem;
+  margin-top: 1.5rem;
+}
+@media (min-width: 1024px) {
+  .chart-grid { grid-template-columns: 1fr 1fr; }
+}
+.chart-card {
+  background: rgba(10,16,34,0.92);
+  border: 1px solid rgba(255,255,255,0.08);
+  border-radius: 12px;
+  padding: 1.25rem;
+}
+.chart-title {
+  font-size: 0.7rem;
+  font-weight: 800;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: rgba(255,255,255,0.4);
+  margin-bottom: 1rem;
+}
+.chart-row {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  margin-bottom: 4px;
+}
+.chart-label {
+  width: 120px;
+  min-width: 120px;
+  font-size: 0.7rem;
+  font-weight: 600;
+  color: rgba(255,255,255,0.6);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  text-align: right;
+}
+.chart-bar-wrap {
+  flex: 1;
+  height: 28px;
+  background: rgba(255,255,255,0.04);
+  border-radius: 4px;
+  overflow: hidden;
+  position: relative;
+}
+.chart-bar {
+  height: 100%;
+  border-radius: 4px;
+  transition: width 0.4s ease;
+  min-width: 2px;
+}
+.chart-value {
+  min-width: 60px;
+  font-size: 0.7rem;
+  font-weight: 700;
+  font-family: 'SF Mono','Fira Code','Consolas',monospace;
+  color: rgba(255,255,255,0.7);
+  text-align: right;
+}
+
+/* ── Mini Bar Chart (inline SVG in table) ────────────────────────── */
+.mini-bar-chart { display: inline-block; vertical-align: middle; }
+
+/* ── States ──────────────────────────────────────────────────────── */
+.state-msg {
+  text-align: center;
+  padding: 4rem 1rem;
+  color: rgba(255,255,255,0.35);
+  font-size: 1rem;
+}
+.state-msg a { color: #ffd166; }
+.spinner {
+  width: 28px; height: 28px;
+  border: 3px solid rgba(255,255,255,0.08);
+  border-top-color: #ffd166;
+  border-radius: 50%;
+  animation: spin 0.8s linear infinite;
+  margin: 0 auto 1rem;
+}
+@keyframes spin { to { transform: rotate(360deg); } }
+.stats-meta {
+  font-size: 0.8rem;
+  color: rgba(255,255,255,0.4);
+  margin-bottom: 1.25rem;
+}
+</style>
+</head>
+<body data-nav-primary="stats">
+<div class="tt-shell-content" id="main-content">
+  <div class="page-header">
+    <h1>Statistics</h1>
+    <p class="page-subtitle">Performance analytics by category</p>
+  </div>
+
+  <div class="stats-page">
+    <div id="state-no-device" class="state-msg" style="display:none;">
+      No device selected. <a href="/event-set.html">Select an event set</a> to view statistics.
+    </div>
+    <div id="state-loading" class="state-msg">
+      <div class="spinner"></div>
+      Loading statistics&hellip;
+    </div>
+    <div id="state-no-data" class="state-msg" style="display:none;">
+      No run data available. Complete some runs and they will appear here.
+    </div>
+    <div id="stats-content" style="display:none;">
+      <div class="stats-meta" id="stats-meta"></div>
+      <div id="perf-section"></div>
+      <div id="bracket-section"></div>
+    </div>
+  </div>
+</div>
+
+<script src="/auth.js"></script>
+<script src="/shell.js"></script>
+<script>
+(function() {
+  "use strict";
+
+  // ── Helpers ──────────────────────────────────────────────────────
+  var deviceId = localStorage.getItem("tt-selected-device") || "";
+  var eventId  = localStorage.getItem("tt-selected-event") || "";
+
+  var COLORS = ["#C8102E","#003DA5","#22c55e","#eab308","#f97316","#8b5cf6","#ec4899","#06b6d4"];
+
+  function num(v) { var n = parseFloat(v); return isNaN(n) ? null : n; }
+  function pos(v) { return v != null && isFinite(v) && v > 0 ? v : null; }
+  function fmt(v, d) { d = d != null ? d : 3; return v != null && isFinite(v) ? v.toFixed(d) : "-"; }
+  function pct(v) { return v != null && isFinite(v) ? (v * 100).toFixed(1) + "%" : "-"; }
+  function esc(s) { var d = document.createElement("div"); d.textContent = s || ""; return d.innerHTML; }
+  function mean(arr) { if (!arr.length) return null; return arr.reduce(function(a,b){return a+b;},0)/arr.length; }
+  function sampleStdDev(arr) {
+    if (arr.length < 2) return null;
+    var m = mean(arr);
+    var ss = arr.reduce(function(a,v){return a + (v-m)*(v-m);}, 0);
+    return Math.sqrt(ss / (arr.length - 1));
+  }
+  function minPos(arr) { var f = arr.filter(function(v){return v!=null&&v>0;}); return f.length ? Math.min.apply(null,f) : null; }
+  function maxPos(arr) { var f = arr.filter(function(v){return v!=null&&v>0;}); return f.length ? Math.max.apply(null,f) : null; }
+
+  // ── Mini Bar Chart SVG Builder ─────────────────────────────────
+  // Renders a small inline SVG with two bars: best ET and avg ET
+  function miniBarSVG(bestET, avgET, accentColor) {
+    if (bestET == null && avgET == null) return '-';
+    var w = 90, h = 28, pad = 2, barH = 10;
+    // Use avg as the 100% reference; best is always <= avg
+    var maxVal = avgET || bestET || 1;
+    var bestW = bestET != null ? Math.max(2, (bestET / maxVal) * (w - pad * 2)) : 0;
+    var avgW  = avgET != null  ? (w - pad * 2) : 0;
+
+    var svg = '<svg class="mini-bar-chart" width="' + w + '" height="' + h + '" viewBox="0 0 ' + w + ' ' + h + '" xmlns="http://www.w3.org/2000/svg">';
+    // avg bar (dimmer, background)
+    if (avgW > 0) {
+      svg += '<rect x="' + pad + '" y="' + (pad) + '" width="' + avgW.toFixed(1) + '" height="' + barH + '" rx="3" fill="rgba(255,255,255,0.08)"/>';
+    }
+    // best bar (accent color, foreground)
+    if (bestW > 0) {
+      svg += '<rect x="' + pad + '" y="' + (pad) + '" width="' + bestW.toFixed(1) + '" height="' + barH + '" rx="3" fill="' + accentColor + '" opacity="0.7"/>';
+    }
+    // labels
+    var textY = h - 3;
+    if (bestET != null) {
+      svg += '<text x="' + pad + '" y="' + textY + '" font-size="8" fill="' + accentColor + '" font-family="SF Mono,Fira Code,Consolas,monospace" font-weight="700">' + bestET.toFixed(3) + '</text>';
+    }
+    if (avgET != null) {
+      svg += '<text x="' + (w - pad) + '" y="' + textY + '" text-anchor="end" font-size="8" fill="rgba(255,255,255,0.35)" font-family="SF Mono,Fira Code,Consolas,monospace">' + avgET.toFixed(3) + '</text>';
+    }
+    svg += '</svg>';
+    return svg;
+  }
+
+  // ── DOM shortcuts ───────────────────────────────────────────────
+  function $(id) { return document.getElementById(id); }
+  function show(id) { $(id).style.display = ""; }
+  function hide(id) { $(id).style.display = "none"; }
+
+  // ── Split races into individual runs ────────────────────────────
+  function splitRuns(races) {
+    var runs = [];
+    races.forEach(function(r) {
+      ["left","right"].forEach(function(side) {
+        var p = side + "_";
+        var name = r[p + "name"];
+        if (!name) return;
+        runs.push({
+          name:        name,
+          car_num:     r[p + "car_num"] || "",
+          class_name:  r[p + "class"] || "",
+          rt:          num(r[p + "rt"]),
+          sixty:       num(r[p + "sixty"]),
+          three30:     num(r[p + "three30"]),
+          six60:       num(r[p + "six60"]),
+          six60_speed: num(r[p + "six60_speed"]),
+          thousand:    num(r[p + "thousand"]),
+          thousand_speed: num(r[p + "thousand_speed"]),
+          et:          num(r[p + "et"]),
+          speed:       num(r[p + "speed"]),
+          dial:        num(r[p + "dial"]),
+          mov:         num(r[p + "mov"]),
+          isWinner:    r.winner && r.winner.toUpperCase() === side.toUpperCase(),
+          round:       r.round || "",
+          category:    r.category || "Unknown"
+        });
+      });
+    });
+    return runs;
+  }
+
+  // ── Classification: bracket vs heads-up ─────────────────────────
+  function classifyCategories(runs) {
+    // Group runs by category
+    var byCat = {};
+    runs.forEach(function(r) {
+      var c = r.category;
+      if (!byCat[c]) byCat[c] = [];
+      byCat[c].push(r);
+    });
+
+    var headsUp = {};
+    var bracket = {};
+
+    Object.keys(byCat).forEach(function(cat) {
+      var catRuns = byCat[cat];
+      // Count runs with a valid dial_in
+      var withDial = catRuns.filter(function(r) { return r.dial != null && r.dial > 0; });
+      var isBracket = catRuns.length > 0 && (withDial.length / catRuns.length > 0.5);
+
+      if (isBracket) {
+        bracket[cat] = catRuns;
+      } else {
+        headsUp[cat] = catRuns;
+      }
+    });
+
+    return { headsUp: headsUp, bracket: bracket };
+  }
+
+  // ── Compute performance (heads-up) stats ────────────────────────
+  function computePerfStats(catRuns) {
+    var rows = [];
+    Object.keys(catRuns).sort().forEach(function(cat) {
+      var list = catRuns[cat];
+      var ets    = list.map(function(r){return pos(r.et);}).filter(Boolean);
+      var speeds = list.map(function(r){return pos(r.speed);}).filter(Boolean);
+      var sixtys = list.map(function(r){return pos(r.sixty);}).filter(Boolean);
+      var t330s  = list.map(function(r){return pos(r.three30);}).filter(Boolean);
+      var s660s  = list.map(function(r){return pos(r.six60);}).filter(Boolean);
+      var s660sp = list.map(function(r){return pos(r.six60_speed);}).filter(Boolean);
+      var t1000s = list.map(function(r){return pos(r.thousand);}).filter(Boolean);
+      var rts    = list.map(function(r){return pos(r.rt);}).filter(Boolean);
+
+      rows.push({
+        cat: cat,
+        runs: list.length,
+        bestET:      minPos(ets),
+        avgET:       mean(ets),
+        topSpeed:    maxPos(speeds),
+        best60:      minPos(sixtys),
+        best330:     minPos(t330s),
+        best660:     minPos(s660s),
+        max660Speed: maxPos(s660sp),
+        best1000:    minPos(t1000s),
+        bestRT:      minPos(rts),
+        avgRT:       mean(rts)
+      });
+    });
+    return rows;
+  }
+
+  // ── Compute bracket stats ───────────────────────────────────────
+  function computeBracketStats(catRuns) {
+    var rows = [];
+    Object.keys(catRuns).sort().forEach(function(cat) {
+      var list = catRuns[cat];
+      var rts = list.map(function(r){return pos(r.rt);}).filter(Boolean);
+      var etsForStd = list.map(function(r){return pos(r.et);}).filter(Boolean);
+
+      // Runs with valid dial and ET (for bracket-specific stats)
+      var withDialET = list.filter(function(r){ return pos(r.et) && pos(r.dial); });
+
+      // Best Package: min(RT + |ET - dial|) for runs with valid RT, ET, dial
+      var withFullPkg = list.filter(function(r){ return pos(r.rt) && pos(r.et) && pos(r.dial); });
+      var packages = withFullPkg.map(function(r){ return r.rt + Math.abs(r.et - r.dial); });
+
+      // Dial-in Accuracy: avg |ET - dial|
+      var dialAbsDevs = withDialET.map(function(r){ return Math.abs(r.et - r.dial); });
+      var dialAccuracy = dialAbsDevs.length ? mean(dialAbsDevs) : null;
+
+      // Breakout Rate: count(ET < dial) / count(valid dial+ET)
+      var breakouts = withDialET.filter(function(r){ return r.et < r.dial; }).length;
+      var breakoutPct = withDialET.length > 0 ? breakouts / withDialET.length : null;
+
+      // ET Standard Deviation
+      var etStdDev = sampleStdDev(etsForStd);
+
+      // Win/Loss from elimination rounds
+      var elimRuns = list.filter(function(r){
+        return r.round && r.round.toString().toUpperCase().charAt(0) === "E";
+      });
+      var wins = elimRuns.filter(function(r){return r.isWinner;}).length;
+      var losses = elimRuns.length - wins;
+
+      rows.push({
+        cat: cat,
+        runs: list.length,
+        avgPkg:      packages.length ? mean(packages) : null,
+        bestPkg:     packages.length ? Math.min.apply(null, packages) : null,
+        avgRT:       mean(rts),
+        bestRT:      minPos(rts),
+        dialAccuracy: dialAccuracy,
+        etStdDev:    etStdDev,
+        breakoutPct: breakoutPct,
+        wins:        wins,
+        losses:      losses,
+        bestET:      minPos(etsForStd),
+        avgET:       mean(etsForStd)
+      });
+    });
+    return rows;
+  }
+
+  // ── Render Performance Section ──────────────────────────────────
+  function renderPerfSection(rows) {
+    if (!rows.length) return;
+    var container = $("perf-section");
+
+    var html = '<div class="stats-section stats-section--perf">';
+    html += '<div class="section-header">';
+    html += '<span class="section-title">Performance Classes</span>';
+    html += '<span class="section-badge section-badge--perf">' + rows.length + ' categor' + (rows.length===1?'y':'ies') + '</span>';
+    html += '</div>';
+
+    // Table
+    html += '<div class="stats-scroll"><table class="stats-table"><thead><tr>';
+    html += '<th>Category</th><th>Runs</th><th>Best vs Avg ET</th><th>Best ET</th><th>Top Speed</th>';
+    html += '<th>Best 60ft</th><th>Best 330</th><th>Best 660</th><th>660 MPH</th>';
+    html += '<th>Best 1000</th><th>Best RT</th><th>Avg RT</th>';
+    html += '</tr></thead><tbody>';
+
+    rows.forEach(function(r) {
+      html += '<tr>';
+      html += '<td>' + esc(r.cat) + '</td>';
+      html += '<td>' + r.runs + '</td>';
+      html += '<td style="text-align:center;">' + miniBarSVG(r.bestET, r.avgET, '#C8102E') + '</td>';
+      html += '<td class="td-white td-mono">' + fmt(r.bestET, 3) + '</td>';
+      html += '<td class="td-white td-mono">' + fmt(r.topSpeed, 2) + '</td>';
+      html += '<td class="td-mono">' + fmt(r.best60, 3) + '</td>';
+      html += '<td class="td-mono">' + fmt(r.best330, 3) + '</td>';
+      html += '<td class="td-mono">' + fmt(r.best660, 3) + '</td>';
+      html += '<td class="td-mono">' + fmt(r.max660Speed, 2) + '</td>';
+      html += '<td class="td-mono">' + fmt(r.best1000, 3) + '</td>';
+      html += '<td class="td-green td-mono">' + fmt(r.bestRT, 3) + '</td>';
+      html += '<td class="td-gray4 td-mono">' + fmt(r.avgRT, 3) + '</td>';
+      html += '</tr>';
+    });
+
+    html += '</tbody></table></div>';
+    html += '</div>'; // end stats-section
+
+    // Charts
+    var etData = rows.filter(function(r){return r.bestET!=null;})
+      .map(function(r){return {label:r.cat + ' (' + r.runs + ')', value:r.bestET};})
+      .sort(function(a,b){return a.value - b.value;});
+
+    var speedData = rows.filter(function(r){return r.topSpeed!=null;})
+      .map(function(r){return {label:r.cat + ' (' + r.runs + ')', value:r.topSpeed};})
+      .sort(function(a,b){return b.value - a.value;});
+
+    html += '<div class="chart-grid">';
+    html += buildBarChart("Best ET by Category", etData, 3, "#C8102E", true);
+    html += buildBarChart("Top Speed by Category", speedData, 2, "#22c55e", false);
+    html += '</div>';
+
+    container.innerHTML = html;
+  }
+
+  // ── Render Bracket Section ──────────────────────────────────────
+  function renderBracketSection(rows) {
+    if (!rows.length) return;
+    var container = $("bracket-section");
+
+    var html = '<div class="stats-section stats-section--bracket">';
+    html += '<div class="section-header">';
+    html += '<span class="section-title">Bracket / Sportsman Classes</span>';
+    html += '<span class="section-badge section-badge--bracket">' + rows.length + ' categor' + (rows.length===1?'y':'ies') + '</span>';
+    html += '</div>';
+
+    // Table
+    html += '<div class="stats-scroll"><table class="stats-table"><thead><tr>';
+    html += '<th>Category</th><th>Runs</th><th>Best vs Avg ET</th><th>Avg Pkg</th><th>Best Pkg</th>';
+    html += '<th>Avg RT</th><th>Best RT</th><th>Dial Accuracy</th><th>ET Std Dev</th>';
+    html += '<th>Breakout %</th><th>W</th><th>L</th>';
+    html += '</tr></thead><tbody>';
+
+    rows.forEach(function(r) {
+      var boPctVal = r.breakoutPct != null ? (r.breakoutPct * 100).toFixed(1) + "%" : "-";
+      var boClass = (r.breakoutPct != null && r.breakoutPct > 0.3) ? "td-red" : "";
+
+      html += '<tr>';
+      html += '<td>' + esc(r.cat) + '</td>';
+      html += '<td>' + r.runs + '</td>';
+      html += '<td style="text-align:center;">' + miniBarSVG(r.bestET, r.avgET, '#003DA5') + '</td>';
+      html += '<td class="td-white td-mono">' + fmt(r.avgPkg, 3) + '</td>';
+      html += '<td class="td-green td-mono">' + fmt(r.bestPkg, 3) + '</td>';
+      html += '<td class="td-mono">' + fmt(r.avgRT, 3) + '</td>';
+      html += '<td class="td-green td-mono">' + fmt(r.bestRT, 3) + '</td>';
+      html += '<td class="td-mono">' + fmt(r.dialAccuracy, 3) + '</td>';
+      html += '<td class="td-gray4 td-mono">' + fmt(r.etStdDev, 3) + '</td>';
+      html += '<td class="td-mono ' + boClass + '">' + boPctVal + '</td>';
+      html += '<td class="td-green">' + r.wins + '</td>';
+      html += '<td class="td-red">' + r.losses + '</td>';
+      html += '</tr>';
+    });
+
+    html += '</tbody></table></div>';
+    html += '</div>'; // end stats-section
+
+    // Charts
+    var pkgData = rows.filter(function(r){return r.avgPkg!=null;})
+      .map(function(r){return {label:r.cat + ' (' + r.runs + ')', value:r.avgPkg};})
+      .sort(function(a,b){return a.value - b.value;});
+
+    var rtData = rows.filter(function(r){return r.avgRT!=null;})
+      .map(function(r){return {label:r.cat + ' (' + r.runs + ')', value:r.avgRT};})
+      .sort(function(a,b){return a.value - b.value;});
+
+    var boData = rows.filter(function(r){return r.breakoutPct!=null;})
+      .map(function(r){return {label:r.cat + ' (' + r.runs + ')', value:r.breakoutPct * 100};})
+      .sort(function(a,b){return b.value - a.value;});
+
+    html += '<div class="chart-grid">';
+    html += buildBarChart("Avg Package by Category", pkgData, 3, "#003DA5", true);
+    html += buildBarChart("Avg Reaction Time by Category", rtData, 3, "#8b5cf6", true);
+    html += buildBarChart("Breakout Rate by Category", boData, 1, "#ef4444", false, "%");
+    html += '</div>';
+
+    container.innerHTML = html;
+  }
+
+  // ── Horizontal Bar Chart Builder ────────────────────────────────
+  function buildBarChart(title, data, decimals, defaultColor, lowerIsBetter, suffix) {
+    if (!data.length) return '';
+    suffix = suffix || '';
+
+    var maxVal = Math.max.apply(null, data.map(function(d){return d.value;}));
+    if (maxVal <= 0) maxVal = 1;
+
+    var html = '<div class="chart-card">';
+    html += '<div class="chart-title">' + esc(title) + '</div>';
+
+    data.forEach(function(d, i) {
+      var pctWidth = (d.value / maxVal * 100).toFixed(1);
+      var color = COLORS[i % COLORS.length];
+      if (defaultColor) color = defaultColor;
+
+      html += '<div class="chart-row">';
+      html += '<div class="chart-label" title="' + esc(d.label) + '">' + esc(d.label) + '</div>';
+      html += '<div class="chart-bar-wrap">';
+      html += '<div class="chart-bar" style="width:' + pctWidth + '%;background:' + color + ';"></div>';
+      html += '</div>';
+      html += '<div class="chart-value">' + d.value.toFixed(decimals) + suffix + '</div>';
+      html += '</div>';
+    });
+
+    html += '</div>';
+    return html;
+  }
+
+  // ── Data Loading ────────────────────────────────────────────────
+  function init() {
+    if (!deviceId) {
+      hide("state-loading");
+      show("state-no-device");
+      return;
+    }
+    loadData();
+  }
+
+  async function loadData() {
+    try {
+      var url;
+      if (eventId && eventId !== "__all__") {
+        url = "/api/events/" + encodeURIComponent(eventId) + "/results";
+      } else {
+        url = "/api/runs?device_id=" + encodeURIComponent(deviceId) + "&limit=2000";
+      }
+
+      var res = await fetch(url);
+      var data = await res.json();
+      var races = data.races || data || [];
+
+      hide("state-loading");
+
+      if (!races.length) {
+        show("state-no-data");
+        return;
+      }
+
+      var runs = splitRuns(races);
+      $("stats-meta").textContent = races.length + " races analyzed (" + runs.length + " individual runs)";
+      show("stats-content");
+
+      var classified = classifyCategories(runs);
+
+      var perfRows = computePerfStats(classified.headsUp);
+      var bracketRows = computeBracketStats(classified.bracket);
+
+      if (perfRows.length) renderPerfSection(perfRows);
+      if (bracketRows.length) renderBracketSection(bracketRows);
+
+      if (!perfRows.length && !bracketRows.length) {
+        show("state-no-data");
+      }
+    } catch(e) {
+      console.error("Stats load failed:", e);
+      $("state-loading").innerHTML = '<div class="state-msg">Failed to load run data. Please try again.</div>';
+    }
+  }
+
+  init();
+})();
+</script>
+</body>
+</html>

@@ -1,0 +1,332 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Class Setup — Timing Talk</title>
+<link rel="stylesheet" href="/styles.css">
+<style>
+.cs-toolbar{display:flex;gap:0.6rem;align-items:center;flex-wrap:wrap;margin-bottom:1rem;}
+.cs-search{flex:1;min-width:200px;max-width:400px;padding:0.58rem 0.85rem;border:1px solid var(--border);border-radius:10px;background:#101425;color:var(--text);font-size:0.88rem;outline:none;font-family:inherit;}
+.cs-search:focus{border-color:rgba(200,16,46,0.55);box-shadow:0 0 0 3px rgba(200,16,46,0.12);}
+.cs-search::placeholder{color:var(--text-muted);}
+.cs-count{font-size:0.78rem;color:var(--text-muted);margin-left:auto;}
+
+.cs-section-header{display:flex;align-items:center;gap:0.6rem;margin:1.5rem 0 0.6rem;padding-bottom:0.4rem;border-bottom:1px solid var(--border);}
+.cs-section-header:first-of-type{margin-top:0.5rem;}
+.cs-section-header h2{margin:0;border:none;padding:0;font-size:1.15rem;color:#fff;}
+.cs-section-dot{width:8px;height:8px;border-radius:50%;flex-shrink:0;}
+.cs-section-dot.racing{background:#22c55e;}
+.cs-section-dot.non-racing{background:#eab308;}
+.cs-section-count{font-size:0.75rem;color:var(--text-muted);font-weight:600;}
+
+.settings-card{background:rgba(10,16,34,0.92);border:1px solid rgba(255,255,255,0.08);border-radius:14px;padding:1.2rem;margin-bottom:1rem;}
+
+.cs-table-wrap{overflow-x:auto;border:1px solid var(--border);border-radius:14px;background:var(--surface);}
+.cs-table{width:100%;border-collapse:collapse;margin:0;}
+.cs-table thead th{position:sticky;top:0;background:var(--surface3);z-index:1;white-space:nowrap;padding:0.65rem 0.75rem;text-align:left;font-size:0.75rem;font-weight:700;color:var(--text-dim);text-transform:uppercase;letter-spacing:0.06em;border-bottom:1px solid var(--border);}
+.cs-table tbody td{padding:0.5rem 0.75rem;border-bottom:1px solid rgba(255,255,255,0.04);font-size:0.86rem;color:var(--text);}
+.cs-table tbody tr:hover{background:rgba(200,16,46,0.06);}
+.cs-table tbody tr.cs-hidden{display:none;}
+
+.cs-cell{cursor:pointer;border-radius:6px;padding:0.25rem 0.4rem;margin:-0.25rem -0.4rem;transition:background 0.12s;}
+.cs-cell:hover{background:rgba(255,255,255,0.06);}
+
+.cs-cell-editing{background:#101425 !important;outline:2px solid rgba(200,16,46,0.55);border-radius:6px;}
+.cs-cell input,.cs-cell select{width:100%;padding:0.25rem 0.4rem;border:none;background:transparent;color:var(--text);font-size:0.86rem;font-family:inherit;outline:none;}
+.cs-cell input[type="number"]{width:80px;}
+
+.cs-type-badge{display:inline-block;padding:0.12rem 0.5rem;border-radius:999px;font-size:0.7rem;font-weight:700;}
+.cs-type-badge.racing{background:rgba(34,197,94,0.14);color:#86efac;border:1px solid rgba(34,197,94,0.2);}
+.cs-type-badge.non-racing{background:rgba(234,179,8,0.14);color:#fde68a;border:1px solid rgba(234,179,8,0.2);}
+
+.cs-time{font-family:'SF Mono','Fira Code','Consolas',monospace;font-size:0.82rem;color:#ffd166;}
+
+.cs-delete{background:none;border:none;color:var(--text-muted);cursor:pointer;font-size:1rem;padding:0.2rem 0.4rem;border-radius:6px;transition:all 0.12s;line-height:1;}
+.cs-delete:hover{color:#ef4444;background:rgba(239,68,68,0.12);}
+
+.cs-empty{text-align:center;padding:2rem;color:var(--text-muted);font-size:0.9rem;}
+.cs-saving{display:inline-block;font-size:0.72rem;color:#ffd166;font-weight:600;margin-left:0.6rem;opacity:0;transition:opacity 0.15s;}
+.cs-saving.visible{opacity:1;}
+</style>
+</head>
+<body data-nav-utility="class-setup">
+
+<div class="page">
+  <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:0.75rem;margin-bottom:1.25rem;">
+    <div>
+      <h1 style="font-size:1.6rem;margin:0;">Class Setup</h1>
+      <p style="color:var(--text-dim);font-size:0.88rem;margin:0.2rem 0 0;">Manage race class configurations and timing defaults</p>
+    </div>
+  </div>
+
+  <div class="cs-toolbar">
+    <input type="text" class="cs-search" id="csSearch" placeholder="Search by name or code...">
+    <button class="btn btn-primary btn-small" id="csAddBtn">+ Add Class</button>
+    <button class="btn btn-outline btn-small" id="csResetBtn">Reset to Defaults</button>
+    <span class="cs-saving" id="csSaving">Saving...</span>
+    <span class="cs-count" id="csCount"></span>
+  </div>
+
+  <div id="csContent"></div>
+</div>
+
+<script src="/auth.js"></script>
+<script src="/shell.js"></script>
+<script>
+(function() {
+  var STORAGE_KEY = "tt-race-classes";
+  var savingEl = document.getElementById("csSaving");
+  var _saveTimer = null;
+
+  function showSaving() { savingEl.classList.add("visible"); }
+  function hideSaving() { savingEl.classList.remove("visible"); }
+
+  async function loadClassesFromAPI() {
+    try {
+      var res = await fetch("/api/race-classes");
+      if (res.ok) {
+        var data = await res.json();
+        if (data.classes && data.classes.length) {
+          localStorage.setItem(STORAGE_KEY, JSON.stringify(data.classes));
+          return data.classes;
+        }
+      }
+    } catch(e) { console.warn("API load failed, using cache:", e); }
+    // Fallback to localStorage cache
+    try {
+      var raw = localStorage.getItem(STORAGE_KEY);
+      if (raw) return JSON.parse(raw);
+    } catch(e) {}
+    return [];
+  }
+
+  function saveClasses(cls) {
+    // Always cache locally
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(cls));
+    // Debounce API save
+    if (_saveTimer) clearTimeout(_saveTimer);
+    showSaving();
+    _saveTimer = setTimeout(function() {
+      fetch("/api/race-classes", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ classes: cls })
+      }).then(function() { hideSaving(); })
+        .catch(function(e) { console.error("Save to API failed:", e); hideSaving(); });
+    }, 400);
+  }
+
+  function fmtTime(sec) {
+    if (sec === 0) return "0s";
+    var m = Math.floor(sec / 60);
+    var s = sec % 60;
+    if (m === 0) return s + "s";
+    if (s === 0) return m + "m";
+    return m + "m " + (s < 10 ? "0" : "") + s + "s";
+  }
+
+  var classes = [];
+  var container = document.getElementById("csContent");
+  var searchInput = document.getElementById("csSearch");
+  var countEl = document.getElementById("csCount");
+
+  function render() {
+    var racing = [];
+    var nonRacing = [];
+    classes.forEach(function(c, i) { c._idx = i; (c.isRacing ? racing : nonRacing).push(c); });
+
+    var html = "";
+    html += buildSection("Racing Classes", "racing", racing);
+    html += buildSection("Non-Racing / Ceremonies", "non-racing", nonRacing);
+    container.innerHTML = html;
+    updateCount();
+    applyFilter();
+  }
+
+  function buildSection(title, type, items) {
+    var h = '<div class="cs-section-header"><span class="cs-section-dot ' + type + '"></span><h2>' + title + '</h2><span class="cs-section-count">(' + items.length + ')</span></div>';
+    h += '<div class="settings-card" style="padding:0;overflow:hidden;"><div class="cs-table-wrap"><table class="cs-table"><thead><tr>';
+    h += '<th>Name</th><th>Code</th><th>Per Pair Time</th><th>Field Size</th><th>Type</th><th style="width:40px;"></th>';
+    h += '</tr></thead><tbody data-section="' + type + '">';
+    items.forEach(function(c) {
+      h += buildRow(c);
+    });
+    if (!items.length) {
+      h += '<tr><td colspan="6" class="cs-empty">No classes in this section</td></tr>';
+    }
+    h += '</tbody></table></div></div>';
+    return h;
+  }
+
+  function buildRow(c) {
+    var i = c._idx;
+    var typeBadge = c.isRacing
+      ? '<span class="cs-type-badge racing">Racing</span>'
+      : '<span class="cs-type-badge non-racing">Non-Racing</span>';
+    return '<tr data-idx="' + i + '">'
+      + '<td><span class="cs-cell" data-field="name" data-idx="' + i + '">' + esc(c.name) + '</span></td>'
+      + '<td><span class="cs-cell" data-field="code" data-idx="' + i + '">' + esc(c.code) + '</span></td>'
+      + '<td><span class="cs-cell cs-time" data-field="perPairSec" data-idx="' + i + '">' + fmtTime(c.perPairSec) + '</span></td>'
+      + '<td><span class="cs-cell" data-field="fieldSize" data-idx="' + i + '">' + (c.fieldSize || "\u2014") + '</span></td>'
+      + '<td><span class="cs-cell" data-field="isRacing" data-idx="' + i + '">' + typeBadge + '</span></td>'
+      + '<td><button class="cs-delete" data-idx="' + i + '" title="Delete class">&times;</button></td>'
+      + '</tr>';
+  }
+
+  function esc(s) {
+    var d = document.createElement("div");
+    d.textContent = s || "";
+    return d.innerHTML;
+  }
+
+  function updateCount() {
+    var visible = container.querySelectorAll("tbody tr:not(.cs-hidden)[data-idx]").length;
+    countEl.textContent = visible + " of " + classes.length + " classes";
+  }
+
+  function applyFilter() {
+    var q = searchInput.value.trim().toLowerCase();
+    var rows = container.querySelectorAll("tbody tr[data-idx]");
+    var racingVisible = 0, nonRacingVisible = 0;
+    rows.forEach(function(row) {
+      var idx = parseInt(row.getAttribute("data-idx"));
+      var c = classes[idx];
+      if (!c) { row.classList.add("cs-hidden"); return; }
+      var match = !q || c.name.toLowerCase().indexOf(q) !== -1 || c.code.toLowerCase().indexOf(q) !== -1;
+      row.classList.toggle("cs-hidden", !match);
+      if (match) { c.isRacing ? racingVisible++ : nonRacingVisible++; }
+    });
+    var sectionCounts = container.querySelectorAll(".cs-section-count");
+    if (sectionCounts[0]) sectionCounts[0].textContent = "(" + racingVisible + ")";
+    if (sectionCounts[1]) sectionCounts[1].textContent = "(" + nonRacingVisible + ")";
+    updateCount();
+  }
+
+  // Inline editing
+  container.addEventListener("click", function(e) {
+    var cell = e.target.closest(".cs-cell");
+    if (!cell || cell.querySelector("input, select")) return;
+
+    var field = cell.getAttribute("data-field");
+    var idx = parseInt(cell.getAttribute("data-idx"));
+    var c = classes[idx];
+    if (!c) return;
+
+    cell.classList.add("cs-cell-editing");
+
+    if (field === "isRacing") {
+      var sel = document.createElement("select");
+      sel.innerHTML = '<option value="true"' + (c.isRacing ? ' selected' : '') + '>Racing</option><option value="false"' + (!c.isRacing ? ' selected' : '') + '>Non-Racing</option>';
+      cell.textContent = "";
+      cell.appendChild(sel);
+      sel.focus();
+      function commitSelect() {
+        var newVal = sel.value === "true";
+        c.isRacing = newVal;
+        saveClasses(classes);
+        render();
+      }
+      sel.addEventListener("change", commitSelect);
+      sel.addEventListener("blur", commitSelect);
+      return;
+    }
+
+    var val;
+    var inputType = "text";
+    if (field === "perPairSec") {
+      val = c.perPairSec;
+      inputType = "number";
+    } else if (field === "fieldSize") {
+      val = c.fieldSize || "";
+      inputType = "number";
+    } else {
+      val = c[field] || "";
+    }
+
+    var input = document.createElement("input");
+    input.type = inputType;
+    if (inputType === "number") { input.min = "0"; input.step = "1"; }
+    input.value = val;
+    if (field === "perPairSec") input.placeholder = "seconds";
+    cell.textContent = "";
+    cell.appendChild(input);
+    input.focus();
+    input.select();
+
+    function commit() {
+      var newVal = input.value.trim();
+      if (field === "perPairSec") {
+        c.perPairSec = Math.max(0, parseInt(newVal) || 0);
+      } else if (field === "fieldSize") {
+        c.fieldSize = newVal ? Math.max(0, parseInt(newVal) || 0) : undefined;
+        if (c.fieldSize === 0) c.fieldSize = undefined;
+      } else {
+        c[field] = newVal;
+      }
+      saveClasses(classes);
+      render();
+    }
+
+    input.addEventListener("blur", commit);
+    input.addEventListener("keydown", function(e) {
+      if (e.key === "Enter") { e.preventDefault(); commit(); }
+      if (e.key === "Escape") { render(); }
+    });
+  });
+
+  // Delete
+  container.addEventListener("click", function(e) {
+    var btn = e.target.closest(".cs-delete");
+    if (!btn) return;
+    var idx = parseInt(btn.getAttribute("data-idx"));
+    if (confirm("Delete \"" + classes[idx].name + "\"?")) {
+      classes.splice(idx, 1);
+      saveClasses(classes);
+      render();
+    }
+  });
+
+  // Search
+  searchInput.addEventListener("input", applyFilter);
+
+  // Add class
+  document.getElementById("csAddBtn").addEventListener("click", function() {
+    classes.unshift({ name: "New Class", code: "", perPairSec: 60, isRacing: true });
+    saveClasses(classes);
+    render();
+    var firstCell = container.querySelector('tbody[data-section="racing"] .cs-cell[data-field="name"]');
+    if (firstCell) firstCell.click();
+  });
+
+  // Reset to defaults (fetches fresh from API defaults)
+  document.getElementById("csResetBtn").addEventListener("click", function() {
+    if (confirm("Reset all classes to server defaults? Your custom changes will be lost.")) {
+      showSaving();
+      fetch("/api/race-classes", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ classes: [] }) })
+        .then(function() {
+          // Delete the doc so GET returns defaults next time — or just re-fetch defaults
+          return fetch("/api/race-classes");
+        })
+        .then(function(r) { return r.json(); })
+        .then(function(data) {
+          classes = data.classes || [];
+          localStorage.setItem(STORAGE_KEY, JSON.stringify(classes));
+          // Re-save defaults to Firestore so they're persisted
+          return fetch("/api/race-classes", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ classes: classes }) });
+        })
+        .then(function() { hideSaving(); render(); })
+        .catch(function(e) { console.error("Reset failed:", e); hideSaving(); });
+    }
+  });
+
+  // Init: load from API then render
+  container.innerHTML = '<div class="cs-empty">Loading classes...</div>';
+  loadClassesFromAPI().then(function(loaded) {
+    classes = loaded;
+    render();
+  });
+})();
+</script>
+</body>
+</html>

@@ -1,0 +1,210 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Perfect RT — Timing Talk</title>
+<link rel="stylesheet" href="/styles.css">
+<style>
+.pr-controls{display:flex;flex-direction:column;gap:0.75rem;margin-bottom:1rem;}
+.pr-row{display:flex;align-items:center;gap:0.75rem;flex-wrap:wrap;}
+.pr-label{font-size:0.75rem;font-weight:700;color:rgba(255,255,255,0.5);text-transform:uppercase;letter-spacing:0.08em;min-width:80px;}
+.pr-checks{display:flex;flex-wrap:wrap;gap:0.4rem 0.8rem;}
+.pr-checks label{display:flex;align-items:center;gap:0.35rem;font-size:0.8rem;color:rgba(255,255,255,0.7);cursor:pointer;}
+.pr-checks input[type="checkbox"]{accent-color:#c8102e;width:14px;height:14px;}
+.pr-meta{font-size:0.72rem;color:rgba(255,255,255,0.4);margin-left:auto;}
+.cat-group{margin-bottom:1.5rem;}
+.cat-header{display:flex;align-items:center;gap:0.6rem;padding:0.65rem 1rem;background:linear-gradient(90deg,rgba(200,16,46,0.12),transparent);border-left:3px solid #c8102e;border-radius:0 8px 8px 0;margin-bottom:0.5rem;}
+.cat-header h3{font-size:0.9rem;font-weight:800;color:#e2e8f0;}
+.cat-badge{background:rgba(234,179,8,0.18);color:#eab308;font-size:0.65rem;font-weight:800;padding:0.15rem 0.5rem;border-radius:99px;}
+.pr-wrap{background:linear-gradient(180deg,rgba(13,21,43,0.92),rgba(8,13,28,0.98));border:1px solid rgba(255,255,255,0.1);border-radius:16px;overflow:hidden;box-shadow:0 8px 24px rgba(0,0,0,0.3);}
+.pr-wrap::before{content:'';display:block;height:2px;background:linear-gradient(90deg,#ff304f,#ffd166,#3357ff);}
+.pr-scroll{max-height:60vh;overflow:auto;scrollbar-width:thin;scrollbar-color:rgba(255,255,255,0.1) transparent;}
+.pr-table{width:100%;border-collapse:collapse;font-size:0.75rem;}
+.pr-table th{position:sticky;top:0;z-index:2;padding:0.5rem 0.6rem;font-size:0.55rem;font-weight:800;letter-spacing:0.12em;text-transform:uppercase;color:rgba(255,255,255,0.4);background:linear-gradient(180deg,rgba(12,19,40,0.98),rgba(10,16,34,0.95));border-bottom:1px solid rgba(255,255,255,0.1);text-align:center;}
+.pr-table td{padding:0.45rem 0.6rem;border-bottom:1px solid rgba(255,255,255,0.04);font-weight:600;text-align:center;font-family:'SF Mono','Fira Code','Consolas',monospace;}
+.pr-table tr:hover{background:rgba(255,255,255,0.03);}
+.td-name{font-family:'Oswald','Impact',sans-serif !important;text-align:left !important;max-width:160px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+.td-perfect{color:#22c55e;font-weight:900;font-size:0.95rem;text-shadow:0 0 12px rgba(34,197,94,0.4);}
+.wl-win{display:inline-block;background:linear-gradient(180deg,#22c55e,#4ade80);color:#052e16;font-size:0.55rem;font-weight:900;padding:0.12rem 0.4rem;border-radius:4px;}
+.wl-loss{display:inline-block;background:rgba(239,68,68,0.2);color:#ef4444;font-size:0.55rem;font-weight:900;padding:0.12rem 0.4rem;border-radius:4px;}
+.no-results{text-align:center;padding:3rem;color:rgba(255,255,255,0.3);font-size:1rem;}
+</style>
+</head>
+<body data-nav-utility="perfect-rt">
+<div class="tt-shell-content" id="main-content">
+  <div class="page-header">
+    <h1>Perfect Reaction Time</h1>
+    <p class="page-subtitle">Runs with 0.000 reaction time</p>
+  </div>
+
+  <div class="pr-controls">
+    <div class="pr-row">
+      <span id="context-label" style="font-size:0.85rem;color:rgba(255,255,255,0.6);font-weight:600;"></span>
+      <span class="pr-meta" id="pr-count"></span>
+    </div>
+    <div class="pr-row">
+      <span class="pr-label">Round Type</span>
+      <div class="pr-checks" id="round-checks">
+        <label><input type="checkbox" value="qualifying" checked onchange="search()"> Qualifying</label>
+        <label><input type="checkbox" value="eliminations" checked onchange="search()"> Eliminations</label>
+        <label><input type="checkbox" value="time-trials" checked onchange="search()"> Time Trials</label>
+      </div>
+    </div>
+  </div>
+
+  <div id="pr-container"><div class="no-results">Loading...</div></div>
+</div>
+
+<script src="/auth.js"></script>
+<script src="/shell.js"></script>
+<script>
+const deviceId = localStorage.getItem("tt-selected-device") || "";
+const eventId = localStorage.getItem("tt-selected-event") || "";
+let allRaces = [];
+
+function init() {
+  const label = document.getElementById("context-label");
+  if (!deviceId) {
+    label.innerHTML = 'No device selected. <a href="/event-set.html" style="color:#ffd166;">Go to Event Set</a>';
+    document.getElementById("pr-container").innerHTML = '';
+    return;
+  }
+  if (!eventId) {
+    label.innerHTML = 'No event selected. <a href="/event-set.html" style="color:#ffd166;">Go to Event Set</a>';
+    document.getElementById("pr-container").innerHTML = '';
+    return;
+  }
+  label.textContent = "Loading...";
+  loadData();
+}
+
+async function loadData() {
+  try {
+    let res;
+    if (eventId === "__all__") {
+      res = await fetch("/api/runs?device_id=" + encodeURIComponent(deviceId) + "&limit=2000");
+    } else {
+      res = await fetch("/api/events/" + encodeURIComponent(eventId) + "/results");
+    }
+    const data = await res.json();
+    allRaces = data.races || data || [];
+    document.getElementById("context-label").textContent = allRaces.length + " runs loaded";
+    search();
+  } catch(e) {
+    console.error("Failed to load:", e);
+    document.getElementById("pr-container").innerHTML = '<div class="no-results">Failed to load results</div>';
+  }
+}
+
+function esc(s) { const d = document.createElement("div"); d.textContent = s || ""; return d.innerHTML; }
+
+function isElimRound(round) {
+  if (!round) return false;
+  const u = round.trim().toUpperCase();
+  return u.startsWith("E") || u.startsWith("R") || u === "FINALS" || u === "FINAL" || u === "F" || /^(RD?\d|ROUND \d|\d)$/.test(u);
+}
+
+function isQualRound(round) {
+  if (!round) return false;
+  return round.trim().toUpperCase().startsWith("Q");
+}
+
+function isTimeTrial(round) {
+  if (!round) return false;
+  const u = round.trim().toUpperCase();
+  return u.startsWith("TT") || u.includes("TIME TRIAL") || u === "T";
+}
+
+function roundMatchesFilter(round) {
+  const checks = document.querySelectorAll("#round-checks input:checked");
+  const selected = new Set();
+  checks.forEach(c => selected.add(c.value));
+  if (selected.size === 0) return true; // show all if none checked
+  if (selected.has("qualifying") && isQualRound(round)) return true;
+  if (selected.has("eliminations") && isElimRound(round)) return true;
+  if (selected.has("time-trials") && isTimeTrial(round)) return true;
+  return false;
+}
+
+function isPerfectRT(rt) {
+  if (!rt) return false;
+  const s = rt.toString().trim();
+  if (s === ".000" || s === "0.000" || s === "0.0000") return true;
+  const v = parseFloat(s);
+  return v === 0;
+}
+
+function search() {
+  const results = {};
+  let totalCount = 0;
+
+  allRaces.forEach(r => {
+    if (!roundMatchesFilter(r.round)) return;
+    const cat = r.category || "Unknown";
+
+    ["left", "right"].forEach(side => {
+      const p = side + "_";
+      const name = r[p + "name"];
+      const rt = r[p + "rt"];
+
+      if (!name || !isPerfectRT(rt)) return;
+
+      const isWinner = r.winner && r.winner.toUpperCase() === side.toUpperCase();
+
+      if (!results[cat]) results[cat] = [];
+      results[cat].push({
+        name: name.trim(),
+        carNum: r[p + "car_num"] || "",
+        rt: "0.000",
+        et: r[p + "et"] || "",
+        round: r.round || "",
+        category: cat,
+        isWin: isWinner
+      });
+      totalCount++;
+    });
+  });
+
+  document.getElementById("pr-count").textContent = totalCount + " perfect RT" + (totalCount !== 1 ? "s" : "");
+  renderResults(results);
+}
+
+function renderResults(results) {
+  const el = document.getElementById("pr-container");
+  const cats = Object.keys(results).sort();
+
+  if (!cats.length) {
+    el.innerHTML = '<div class="no-results">No perfect reaction times found</div>';
+    return;
+  }
+
+  let html = "";
+  cats.forEach(cat => {
+    const items = results[cat];
+    html += '<div class="cat-group">';
+    html += '<div class="cat-header"><h3>' + esc(cat) + '</h3><span class="cat-badge">' + items.length + '</span></div>';
+    html += '<div class="pr-wrap"><div class="pr-scroll"><table class="pr-table">';
+    html += '<thead><tr><th style="text-align:left">Racer</th><th>Car #</th><th>RT</th><th>ET</th><th>Round</th><th>Category</th><th>W/L</th></tr></thead><tbody>';
+    items.forEach(item => {
+      const badge = item.isWin ? '<span class="wl-win">WIN</span>' : '<span class="wl-loss">LOSS</span>';
+      html += '<tr>';
+      html += '<td class="td-name">' + esc(item.name) + '</td>';
+      html += '<td>' + esc(item.carNum) + '</td>';
+      html += '<td class="td-perfect">0.000</td>';
+      html += '<td>' + esc(item.et) + '</td>';
+      html += '<td>' + esc(item.round) + '</td>';
+      html += '<td style="font-size:0.65rem;color:rgba(255,255,255,0.5);font-family:-apple-system,sans-serif;">' + esc(item.category) + '</td>';
+      html += '<td>' + badge + '</td>';
+      html += '</tr>';
+    });
+    html += '</tbody></table></div></div></div>';
+  });
+
+  el.innerHTML = html;
+}
+
+init();
+</script>
+</body>
+</html>

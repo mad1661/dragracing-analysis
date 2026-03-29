@@ -1,0 +1,138 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Raw Data Feed — Timing Talk</title>
+<link rel="stylesheet" href="/styles.css">
+<style>
+.feed-header{display:flex;align-items:center;gap:1rem;margin-bottom:1rem;flex-wrap:wrap;}
+.feed-header select{background:#1a1a2e;color:#e8e8f0;border:1px solid #2a2a4a;border-radius:8px;padding:0.5rem 1rem;font-size:0.85rem;min-width:200px;}
+.feed-status{display:flex;align-items:center;gap:0.5rem;font-size:0.75rem;color:rgba(255,255,255,0.5);}
+.feed-status .dot{width:8px;height:8px;border-radius:50%;background:#555;}
+.feed-status .dot.online{background:#22c55e;box-shadow:0 0 8px rgba(34,197,94,0.4);}
+.feed-grid{display:grid;grid-template-columns:1fr 1fr;gap:0.75rem;height:calc(100vh - 200px);}
+@media(max-width:768px){.feed-grid{grid-template-columns:1fr;height:auto;}}
+.feed-col{background:rgba(10,16,34,0.92);border:1px solid rgba(255,255,255,0.08);border-radius:12px;overflow:hidden;display:flex;flex-direction:column;}
+.feed-col-title{padding:0.6rem 0.8rem;font-size:0.6rem;font-weight:800;letter-spacing:0.12em;text-transform:uppercase;color:rgba(255,255,255,0.5);border-bottom:1px solid rgba(255,255,255,0.06);display:flex;align-items:center;gap:0.5rem;flex-shrink:0;}
+.feed-dot{width:8px;height:8px;border-radius:50%;}
+.feed-dot.serial{background:#ff304f;box-shadow:0 0 6px rgba(255,48,79,0.5);}
+.feed-dot.tcp{background:#3357ff;box-shadow:0 0 6px rgba(51,87,255,0.5);}
+.feed-lines{flex:1;overflow-y:auto;padding:0.4rem;font-family:'SF Mono','Fira Code','Consolas',monospace;font-size:0.65rem;line-height:1.6;scrollbar-width:thin;scrollbar-color:rgba(255,255,255,0.1) transparent;}
+.feed-line{color:rgba(255,255,255,0.7);white-space:pre;padding:0.05rem 0.4rem;border-radius:2px;}
+.feed-line:nth-child(even){background:rgba(255,255,255,0.02);}
+.feed-line .ts{color:rgba(255,255,255,0.3);margin-right:0.5rem;font-size:0.55rem;}
+.feed-empty{color:rgba(255,255,255,0.3);text-align:center;padding:2rem;font-style:italic;}
+.feed-actions{display:flex;gap:0.5rem;margin-left:auto;}
+.feed-actions button{background:rgba(255,255,255,0.06);border:1px solid rgba(255,255,255,0.1);color:rgba(255,255,255,0.6);padding:0.3rem 0.8rem;border-radius:6px;font-size:0.7rem;cursor:pointer;}
+.feed-actions button:hover{background:rgba(255,255,255,0.1);}
+</style>
+</head>
+<body data-nav-primary="feed">
+<div class="tt-shell-content" id="main-content">
+  <div class="page-header">
+    <h1>Raw Data Feed</h1>
+    <p class="page-subtitle">Raw serial and TCP data from the connected timing device</p>
+  </div>
+
+  <div class="feed-header">
+    <div class="feed-status">
+      <span class="dot" id="status-dot"></span>
+      <span id="status-text">Not connected</span>
+    </div>
+    <div class="feed-actions">
+      <button onclick="clearFeed('serial')">Clear Serial</button>
+      <button onclick="clearFeed('tcp')">Clear TCP</button>
+    </div>
+  </div>
+
+  <div class="feed-grid">
+    <div class="feed-col">
+      <div class="feed-col-title"><span class="feed-dot serial"></span>Serial Data</div>
+      <div class="feed-lines" id="serial-feed"><div class="feed-empty">Waiting for data...</div></div>
+    </div>
+    <div class="feed-col">
+      <div class="feed-col-title"><span class="feed-dot tcp"></span>TCP Data</div>
+      <div class="feed-lines" id="tcp-feed"><div class="feed-empty">Waiting for data...</div></div>
+    </div>
+  </div>
+</div>
+
+<script src="/auth.js"></script>
+<script src="/shell.js"></script>
+<script type="module">
+import { initializeApp } from "https://www.gstatic.com/firebasejs/11.1.0/firebase-app.js";
+import { getDatabase, ref, onValue, onChildAdded, query, orderByKey, limitToLast, off } from "https://www.gstatic.com/firebasejs/11.1.0/firebase-database.js";
+
+const app = initializeApp(FIREBASE_CONFIG);
+const db = getDatabase(app);
+let currentDeviceId = localStorage.getItem("tt-selected-device") || "";
+let serialUnsub = null, tcpUnsub = null;
+
+function init() {
+  if (!currentDeviceId) {
+    document.getElementById("status-text").innerHTML = 'No device selected. <a href="/event-set.html" style="color:#ffd166;">Go to Event Set</a>';
+    return;
+  }
+  connectToDevice(currentDeviceId);
+}
+
+let feedLogRef = null;
+
+async function connectToDevice(deviceId) {
+  // Cleanup old listeners
+  if (feedLogRef) off(feedLogRef);
+  if (serialUnsub) serialUnsub();
+  if (tcpUnsub) tcpUnsub();
+  feedLogRef = null;
+  clearFeed("serial"); clearFeed("tcp");
+
+  // Status listener
+  const statusRef = ref(db, `devices/${deviceId}/status`);
+  onValue(statusRef, snap => {
+    const s = snap.val() || {};
+    const dot = document.getElementById("status-dot");
+    const text = document.getElementById("status-text");
+    if (s.online) {
+      dot.className = "dot online";
+      text.textContent = `${s.trackName || ""} — ${s.raceName || ""} — Online`;
+    } else {
+      dot.className = "dot";
+      text.textContent = "Device offline";
+    }
+  });
+
+  // Load last 200 lines from feedLog, then listen for new ones
+  feedLogRef = query(ref(db, `devices/${deviceId}/feedLog`), orderByKey(), limitToLast(200));
+  onChildAdded(feedLogRef, snap => {
+    const d = snap.val();
+    if (!d || !d.raw) return;
+    const ch = d.channel === "tcp" ? "tcp-feed" : "serial-feed";
+    addLine(ch, d.raw);
+  });
+}
+
+function addLine(containerId, text) {
+  const container = document.getElementById(containerId);
+  const empty = container.querySelector(".feed-empty");
+  if (empty) empty.remove();
+  const div = document.createElement("div");
+  div.className = "feed-line";
+  const now = new Date().toLocaleTimeString();
+  div.innerHTML = `<span class="ts">${now}</span>${escHtml(text)}`;
+  container.appendChild(div);
+  if (container.children.length > 500) container.removeChild(container.firstChild);
+  container.scrollTop = container.scrollHeight;
+}
+
+window.clearFeed = function(type) {
+  const el = document.getElementById(type + "-feed");
+  el.innerHTML = '<div class="feed-empty">Waiting for data...</div>';
+};
+
+function escHtml(s) { const d = document.createElement("div"); d.textContent = s; return d.innerHTML; }
+
+init();
+</script>
+</body>
+</html>

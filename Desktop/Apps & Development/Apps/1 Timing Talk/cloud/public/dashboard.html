@@ -1,0 +1,232 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Dashboard - Timing Talk</title>
+  <link rel="stylesheet" href="/styles.css">
+</head>
+<body data-nav-utility="developer">
+
+  <div class="page page-narrow">
+    <!-- Auth Form (shown when logged out) -->
+    <div id="authSection">
+      <div class="hero" style="padding:2rem 0;">
+        <h1 style="font-size:1.6rem;">Get Started</h1>
+        <p>Sign in or create an account to get your API key.</p>
+      </div>
+
+      <div class="card">
+        <div style="display:flex; gap:0.5rem; margin-bottom:1rem;">
+          <button class="btn btn-primary" id="tabLogin" onclick="showAuthTab('login')" style="flex:1;">Sign In</button>
+          <button class="btn btn-outline" id="tabSignup" onclick="showAuthTab('signup')" style="flex:1;">Create Account</button>
+        </div>
+
+        <div id="loginForm">
+          <label>Email</label>
+          <input type="email" id="loginEmail" placeholder="you@example.com">
+          <label>Password</label>
+          <input type="password" id="loginPassword" placeholder="Password">
+          <div id="loginMsg" class="mt-1"></div>
+          <button class="btn btn-primary mt-1" onclick="handleLogin()" style="width:100%;">Sign In</button>
+        </div>
+
+        <div id="signupForm" class="hidden">
+          <label>Email</label>
+          <input type="email" id="signupEmail" placeholder="you@example.com">
+          <label>Password (min 6 characters)</label>
+          <input type="password" id="signupPassword" placeholder="Create a password">
+          <label>Confirm Password</label>
+          <input type="password" id="signupConfirm" placeholder="Confirm password">
+          <div id="signupMsg" class="mt-1"></div>
+          <button class="btn btn-primary mt-1" onclick="handleSignup()" style="width:100%;">Create Account</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Dashboard (shown when logged in) -->
+    <div id="dashboardSection" class="hidden">
+      <h2 style="border:none; margin-top:1rem;">Your API Keys</h2>
+      <p>Use API keys to authenticate requests from your website or app.</p>
+
+      <div class="card">
+        <h3>Generate New Key</h3>
+        <label>Label (what's this key for?)</label>
+        <input type="text" id="keyLabel" placeholder="e.g. My Race Track Website">
+        <button class="btn btn-primary mt-1" onclick="createKey()">Generate API Key</button>
+      </div>
+
+      <div id="newKeyAlert" class="hidden">
+        <div class="alert alert-success">
+          <strong>New API key created!</strong> Copy it now -- it won't be shown again.
+        </div>
+        <div class="copy-box">
+          <code id="newKeyValue"></code>
+          <button class="btn btn-small btn-outline" onclick="copyKey()">Copy</button>
+        </div>
+      </div>
+
+      <div id="keysList">
+        <p class="text-dim text-small">Loading keys...</p>
+      </div>
+
+      <h2>Your Devices</h2>
+      <div id="devicesList">
+        <p class="text-dim text-small">Loading devices...</p>
+      </div>
+
+      <h2>Quick Start</h2>
+      <div class="card">
+        <p>Add this to any webpage to start streaming live timing data:</p>
+        <pre><code>&lt;script src="https://nhra-timing-api.web.app/timing-talk.js"&gt;&lt;/script&gt;
+&lt;script&gt;
+  const tt = new TimingTalk("YOUR_API_KEY");
+  tt.stream("DEVICE_ID", (data) =&gt; {
+    console.log(data.raw);
+  });
+&lt;/script&gt;</code></pre>
+        <a href="/docs.html" class="btn btn-outline btn-small">Full Documentation</a>
+      </div>
+    </div>
+  </div>
+
+  <div class="footer">Timing Talk &middot; NHRA Timing API</div>
+
+  <script src="/shell.js"></script>
+  <script src="/auth.js"></script>
+  <script>
+    initFirebase().then(user => {
+      if (user) {
+        showDashboard();
+      }
+    });
+
+    function showAuthTab(tab) {
+      document.getElementById("loginForm").classList.toggle("hidden", tab !== "login");
+      document.getElementById("signupForm").classList.toggle("hidden", tab !== "signup");
+      document.getElementById("tabLogin").className = tab === "login" ? "btn btn-primary" : "btn btn-outline";
+      document.getElementById("tabSignup").className = tab === "signup" ? "btn btn-primary" : "btn btn-outline";
+    }
+
+    async function handleLogin() {
+      const email = document.getElementById("loginEmail").value.trim();
+      const password = document.getElementById("loginPassword").value;
+      const msg = document.getElementById("loginMsg");
+      if (!email || !password) { msg.className = "alert alert-error mt-1"; msg.textContent = "Fill in all fields"; return; }
+      try {
+        await signIn(email, password);
+        showDashboard();
+      } catch (e) {
+        msg.className = "alert alert-error mt-1";
+        msg.textContent = e.message.replace("Firebase: ", "").replace(/ \(auth\/.*\)/, "");
+      }
+    }
+
+    async function handleSignup() {
+      const email = document.getElementById("signupEmail").value.trim();
+      const pw = document.getElementById("signupPassword").value;
+      const confirm = document.getElementById("signupConfirm").value;
+      const msg = document.getElementById("signupMsg");
+      if (!email || !pw) { msg.className = "alert alert-error mt-1"; msg.textContent = "Fill in all fields"; return; }
+      if (pw !== confirm) { msg.className = "alert alert-error mt-1"; msg.textContent = "Passwords don't match"; return; }
+      if (pw.length < 6) { msg.className = "alert alert-error mt-1"; msg.textContent = "Password must be at least 6 characters"; return; }
+      try {
+        await signUp(email, pw);
+        showDashboard();
+      } catch (e) {
+        msg.className = "alert alert-error mt-1";
+        msg.textContent = e.message.replace("Firebase: ", "").replace(/ \(auth\/.*\)/, "");
+      }
+    }
+
+    async function handleSignOut() {
+      await signOut();
+      document.getElementById("authSection").classList.remove("hidden");
+      document.getElementById("dashboardSection").classList.add("hidden");
+    }
+
+    function showDashboard() {
+      document.getElementById("authSection").classList.add("hidden");
+      document.getElementById("dashboardSection").classList.remove("hidden");
+      loadKeys();
+      loadDevices();
+    }
+
+    async function createKey() {
+      const label = document.getElementById("keyLabel").value.trim() || "My API Key";
+      try {
+        const result = await apiFetch("/keys", { method: "POST", body: { label } });
+        document.getElementById("newKeyValue").textContent = result.apiKey;
+        document.getElementById("newKeyAlert").classList.remove("hidden");
+        document.getElementById("keyLabel").value = "";
+        loadKeys();
+      } catch (e) {
+        alert("Failed to create key: " + e.message);
+      }
+    }
+
+    function copyKey() {
+      const key = document.getElementById("newKeyValue").textContent;
+      navigator.clipboard.writeText(key);
+      const btn = event.target;
+      btn.textContent = "Copied!";
+      setTimeout(() => btn.textContent = "Copy", 2000);
+    }
+
+    async function loadKeys() {
+      const el = document.getElementById("keysList");
+      try {
+        const result = await apiFetch("/keys");
+        if (result.keys.length === 0) {
+          el.innerHTML = '<p class="text-dim text-small">No API keys yet. Generate one above.</p>';
+          return;
+        }
+        el.innerHTML = result.keys.map(k => `
+          <div class="key-card">
+            <div class="key-info">
+              <div class="key-label">${k.label}</div>
+              <div class="key-prefix">${k.keyPrefix}...</div>
+              <div class="key-stats">${k.requestCount || 0} requests</div>
+            </div>
+            <button class="btn btn-small btn-danger" onclick="deleteKey('${k.id}')">Delete</button>
+          </div>
+        `).join("");
+      } catch (e) {
+        el.innerHTML = '<p class="text-dim text-small">Failed to load keys.</p>';
+      }
+    }
+
+    async function deleteKey(keyId) {
+      if (!confirm("Delete this API key? Any sites using it will stop working.")) return;
+      try {
+        await apiFetch("/keys/" + keyId, { method: "DELETE" });
+        loadKeys();
+      } catch (e) {
+        alert("Failed: " + e.message);
+      }
+    }
+
+    async function loadDevices() {
+      const el = document.getElementById("devicesList");
+      try {
+        const result = await apiFetch("/devices");
+        if (result.devices.length === 0) {
+          el.innerHTML = '<p class="text-dim text-small">No devices registered. Set up a Pi to see it here.</p>';
+          return;
+        }
+        el.innerHTML = result.devices.map(d => `
+          <div class="key-card">
+            <div class="key-info">
+              <div class="key-label">${d.trackName || d.name || "Unnamed"}</div>
+              <div class="key-prefix">${d.trackLocation || ""}</div>
+              <div class="key-stats mono">${d.id ? d.id.substring(0, 16) + "..." : ""}</div>
+            </div>
+          </div>
+        `).join("");
+      } catch (e) {
+        el.innerHTML = '<p class="text-dim text-small">Failed to load devices.</p>';
+      }
+    }
+  </script>
+</body>
+</html>

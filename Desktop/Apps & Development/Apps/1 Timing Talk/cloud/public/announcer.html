@@ -1,0 +1,1837 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Announcer — Timing Talk</title>
+<link rel="stylesheet" href="/styles.css">
+<style>
+@import url('https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;600;700;800&display=swap');
+
+:root {
+  --bg: #0a0e1a;
+  --board-bg: rgba(8,12,24,0.95);
+  --row-border: rgba(255,255,255,0.06);
+  --label-color: rgba(255,255,255,0.35);
+  --value-color: #e8e8f0;
+  --et-color: #ffffff;
+  --gold: #ffd166;
+  --dim: rgba(255,255,255,0.15);
+  --green: #22c55e;
+  --red: #ef4444;
+  --mono: 'JetBrains Mono', 'SF Mono', 'Fira Code', Consolas, monospace;
+}
+
+* { box-sizing: border-box; margin: 0; padding: 0; }
+html, body { height: 100%; overflow: hidden; padding-bottom: 0; }
+body {
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+  background: var(--bg);
+  color: var(--value-color);
+  display: flex;
+  flex-direction: column;
+  padding-bottom: 35vh;
+}
+
+/* ─── Animations ──────────────────────────────────── */
+@keyframes flashIn {
+  0%   { color: var(--gold); text-shadow: 0 0 24px rgba(255,209,102,0.9), 0 0 6px rgba(255,209,102,0.5); }
+  100% { color: inherit; text-shadow: none; }
+}
+@keyframes flashInGold {
+  0%   { color: #fff; text-shadow: 0 0 24px rgba(255,209,102,0.9); }
+  100% { color: var(--gold); text-shadow: none; }
+}
+@keyframes flashInET {
+  0%   { color: var(--gold); text-shadow: 0 0 30px rgba(255,209,102,1), 0 0 10px rgba(255,209,102,0.6); }
+  100% { color: var(--et-color); text-shadow: none; }
+}
+@keyframes winnerGlow {
+  0%, 100% { text-shadow: 0 0 12px rgba(255,209,102,0.4); }
+  50%      { text-shadow: 0 0 24px rgba(255,209,102,0.7); }
+}
+@keyframes badgePulse {
+  0%, 100% { box-shadow: 0 2px 10px rgba(255,209,102,0.3); }
+  50%      { box-shadow: 0 2px 20px rgba(255,209,102,0.6); }
+}
+@keyframes pulse {
+  0%, 100% { opacity: 1; }
+  50%      { opacity: 0.4; }
+}
+
+.flash       { animation: flashIn 0.4s ease-out; }
+.flash-gold  { animation: flashInGold 0.4s ease-out; }
+.flash-et    { animation: flashInET 0.5s ease-out; }
+
+/* ─── Top Bar ─────────────────────────────────────── */
+.topbar {
+  display: flex; align-items: center; justify-content: space-between;
+  height: 30px; flex-shrink: 0;
+  padding: 0 1rem;
+  background: rgba(6,8,16,0.95);
+  border-bottom: 1px solid var(--row-border);
+  font-size: 0.7rem;
+}
+.topbar-back {
+  color: rgba(255,255,255,0.3); text-decoration: none; font-size: 0.65rem;
+  display: flex; align-items: center; gap: 0.2rem;
+}
+.topbar-back:hover { color: rgba(255,255,255,0.7); }
+.topbar-center {
+  font-weight: 700; letter-spacing: 0.12em; text-transform: uppercase;
+  color: rgba(255,255,255,0.5); font-size: 0.65rem;
+  display: flex; align-items: center; gap: 0.5rem;
+}
+.topbar-center .live-dot {
+  width: 8px; height: 8px; border-radius: 50%;
+  background: var(--green);
+  box-shadow: 0 0 8px rgba(34,197,94,0.7);
+  animation: pulse 2s infinite;
+  display: none;
+}
+.topbar-center .live-dot.on { display: inline-block; }
+.live-go-btn {
+  background: rgba(34,197,94,0.15); color: var(--green);
+  border: 1px solid rgba(34,197,94,0.4); border-radius: 4px;
+  padding: 0.2rem 0.6rem; font-size: 0.65rem; font-weight: 800;
+  cursor: pointer; letter-spacing: 0.08em; transition: all 0.2s;
+  display: none;
+}
+.live-go-btn:hover { background: rgba(34,197,94,0.3); }
+.live-go-btn.show { display: inline-block; }
+.test-btn {
+  background: rgba(255,209,102,0.1); color: var(--gold);
+  border: 1px solid rgba(255,209,102,0.2); border-radius: 4px;
+  padding: 0.15rem 0.5rem; font-size: 0.6rem; font-weight: 700;
+  cursor: pointer; opacity: 0.5; transition: opacity 0.2s;
+  letter-spacing: 0.04em;
+}
+.test-btn:hover { opacity: 1; background: rgba(255,209,102,0.2); }
+.test-btn.running { pointer-events: none; opacity: 0.3; }
+.nav-btn {
+  background: rgba(255,255,255,0.08); color: rgba(255,255,255,0.5);
+  border: 1px solid rgba(255,255,255,0.15); border-radius: 4px;
+  padding: 0.25rem 0.6rem; font-size: 0.7rem; cursor: pointer;
+  transition: all 0.15s; font-weight: 700;
+}
+.nav-btn:hover { background: rgba(255,255,255,0.15); color: rgba(255,255,255,0.9); }
+.nav-btn:disabled { opacity: 0.15; cursor: default; }
+
+/* ─── Driver Info Strip (3-col: left | category | right) */
+.driver-strip {
+  display: grid; grid-template-columns: 1fr auto 1fr;
+  gap: 1px; flex-shrink: 0;
+  background: var(--row-border);
+  border-bottom: 2px solid rgba(255,209,102,0.15);
+}
+.driver-center {
+  display: flex; flex-direction: column; align-items: center; justify-content: center;
+  background: var(--bg); padding: 0.5rem 1.5rem; min-width: 160px;
+}
+.driver-center-cat {
+  font-size: 1.3rem; font-weight: 900; color: white;
+  font-family: 'Oswald', 'Impact', sans-serif;
+  text-transform: uppercase; letter-spacing: 0.04em;
+  text-align: center; line-height: 1.2;
+}
+.driver-center-rnd {
+  font-size: 0.9rem; font-weight: 700; color: var(--gold);
+  text-transform: uppercase; letter-spacing: 0.1em;
+  margin-top: 0.2rem;
+}
+.driver-card {
+  display: flex; align-items: center; gap: 0.8rem;
+  padding: 0.5rem 1rem 0.5rem 1.5rem;
+  background: var(--bg);
+  transition: opacity 0.5s;
+}
+.driver-card.right-card {
+  flex-direction: row-reverse;
+  text-align: right;
+  padding: 0.5rem 1.5rem 0.5rem 1rem;
+}
+.driver-photo {
+  width: 80px; height: 80px; border-radius: 50%; flex-shrink: 0;
+  border: 2px solid rgba(255,255,255,0.1);
+  object-fit: cover; background: rgba(255,255,255,0.03);
+}
+.driver-photo-placeholder {
+  width: 80px; height: 80px; border-radius: 50%; flex-shrink: 0;
+  border: 2px solid rgba(255,255,255,0.06);
+  background: rgba(255,255,255,0.03);
+  display: flex; align-items: center; justify-content: center;
+}
+.driver-photo-placeholder svg { width: 34px; height: 34px; opacity: 0.15; }
+.driver-info { min-width: 0; flex: 1; }
+.driver-name-line {
+  display: flex; align-items: baseline; gap: 0.5rem;
+  flex-wrap: wrap;
+}
+.driver-card.right-card .driver-name-line { justify-content: flex-end; }
+.driver-name {
+  font-size: 1.4rem; font-weight: 800; color: white;
+  letter-spacing: -0.01em; white-space: nowrap;
+  overflow: hidden; text-overflow: ellipsis;
+}
+.driver-carnum {
+  font-size: 1.3rem; font-weight: 800; color: var(--gold);
+}
+.driver-detail {
+  font-size: 1.1rem; color: rgba(255,255,255,0.5);
+  line-height: 1.4; white-space: nowrap;
+  overflow: hidden; text-overflow: ellipsis;
+  font-weight: 600;
+}
+/* Notes section */
+.ann-notes {
+  position: fixed; bottom: 0; left: 0; right: 0;
+  display: grid; grid-template-columns: 1fr 1fr;
+  gap: 1px; background: var(--row-border);
+  z-index: 10;
+  height: 35vh;
+  border-top: 2px solid rgba(255,209,102,0.15);
+}
+.ann-note {
+  background: rgba(6,8,16,0.95); padding: 0.8rem 1.2rem;
+  display: flex; flex-direction: column;
+}
+.ann-note-header {
+  display: flex; justify-content: space-between; align-items: center;
+  margin-bottom: 0.4rem;
+}
+.ann-note-label {
+  font-size: 0.7rem; font-weight: 800; text-transform: uppercase;
+  letter-spacing: 0.1em; color: rgba(255,255,255,0.25);
+}
+.ann-note-edit {
+  background: rgba(255,209,102,0.08); color: var(--gold);
+  border: 1px solid rgba(255,209,102,0.15); border-radius: 4px;
+  padding: 0.3rem 0.8rem; font-size: 0.7rem; font-weight: 700;
+  cursor: pointer; opacity: 0.6; transition: opacity 0.15s;
+}
+.ann-note-edit:hover { opacity: 1; }
+.ann-note-text {
+  font-size: 1.5rem; color: rgba(255,255,255,0.6);
+  line-height: 1.35; overflow-y: auto;
+  flex: 1;
+}
+.ann-note-input {
+  width: 100%; background: rgba(255,255,255,0.05);
+  border: 1px solid rgba(255,255,255,0.1); border-radius: 4px;
+  color: var(--value-color); font-size: 1.5rem; padding: 0.5rem 0.7rem;
+  resize: none; flex: 1; font-family: inherit;
+}
+.ann-note-input:focus { outline: none; border-color: var(--gold); }
+#note-wrap-left, #note-wrap-right { flex: 1; display: flex; flex-direction: column; }
+
+/* ─── Main Scoreboard (5-column: hist-left | values-left | labels | values-right | hist-right) */
+.scoreboard {
+  flex: 1; min-height: 0;
+  display: grid;
+  grid-template-columns: minmax(100px, 0.8fr) 1fr auto 1fr minmax(100px, 0.8fr);
+  gap: 0;
+  background: var(--board-bg);
+  overflow: hidden;
+}
+.lane-col {
+  display: flex; flex-direction: column;
+  padding: 0;
+  transition: opacity 0.5s, filter 0.5s;
+}
+.lane-col.dimmed { opacity: 0.45; filter: saturate(0.3); }
+.lane-col.winner-col { box-shadow: inset 0 0 30px rgba(255,209,102,0.08); }
+
+.center-labels {
+  display: flex; flex-direction: column;
+  background: rgba(6,8,16,0.98);
+  border-left: 1px solid var(--row-border);
+  border-right: 1px solid var(--row-border);
+  min-width: 100px;
+}
+.center-labels .lane-header {
+  text-align: center; padding: 0.35rem 0.5rem;
+  font-size: 0.55rem; font-weight: 800;
+  text-transform: uppercase; letter-spacing: 0.15em;
+  color: rgba(255,255,255,0.25);
+  border-bottom: 1px solid var(--row-border);
+}
+.center-labels .label-rows {
+  display: flex; flex-direction: column;
+  justify-content: flex-start;
+}
+.center-labels .label-row {
+  display: flex; align-items: center; justify-content: center;
+  height: 1.9rem; flex-shrink: 0;
+  border-bottom: 1px solid var(--row-border);
+  padding: 0 0.5rem;
+}
+.center-labels .label-row:last-child { border-bottom: none; }
+
+.lane-header {
+  text-align: center; padding: 0.35rem 0;
+  font-size: 0.55rem; font-weight: 800;
+  text-transform: uppercase; letter-spacing: 0.15em;
+  color: rgba(255,255,255,0.3);
+  border-bottom: 1px solid var(--row-border);
+}
+.lane-header.left-hdr { color: rgba(200,16,46,0.6); }
+.lane-header.right-hdr { color: rgba(0,61,165,0.6); }
+
+.score-rows {
+  display: flex; flex-direction: column;
+  justify-content: flex-start;
+  padding: 0;
+}
+
+.score-row {
+  display: flex; align-items: center;
+  justify-content: center;
+  padding: 0 0.3rem;
+  border-bottom: 1px solid var(--row-border);
+  height: 1.9rem;
+  flex-shrink: 0;
+}
+.score-row:last-child { border-bottom: none; }
+
+.score-label {
+  font-size: 0.85rem; font-weight: 800;
+  text-transform: uppercase; letter-spacing: 0.08em;
+  color: rgba(255,255,255,0.45);
+  white-space: nowrap;
+}
+
+.score-value {
+  font-family: var(--mono);
+  font-weight: 700;
+  color: var(--value-color);
+  text-align: center;
+  white-space: nowrap;
+  transition: color 0.3s;
+  width: 100%;
+}
+
+/* Value sizing by type — slightly smaller */
+.score-value.dial    { font-size: clamp(1rem, 2.2vw, 1.7rem);   color: var(--gold); font-weight: 800; }
+.score-value.rt      { font-size: clamp(1rem, 2.2vw, 1.7rem);   color: var(--value-color); font-weight: 700; }
+.score-value.mid     { font-size: clamp(0.9rem, 1.8vw, 1.4rem); color: rgba(230,230,240,0.8); }
+.score-value.et      { font-size: clamp(1.3rem, 3vw, 2.2rem);   color: var(--et-color); font-weight: 800; }
+.score-value.spd     { font-size: clamp(1rem, 2.2vw, 1.7rem);   color: var(--value-color); }
+.score-value.mov     { font-size: clamp(0.9rem, 1.8vw, 1.4rem); color: var(--dim); }
+.score-value.mov.winner-mov { color: var(--gold); font-weight: 800; }
+.score-value.empty   { color: var(--dim); }
+
+/* ET winner glow */
+.score-value.et.winner-et {
+  color: var(--gold);
+  animation: winnerGlow 2s ease-in-out infinite;
+}
+
+/* Winner badge */
+.winner-badge {
+  display: none;
+  font-size: 0.55rem; font-weight: 900;
+  text-transform: uppercase; letter-spacing: 0.15em;
+  background: linear-gradient(135deg, #ffd166, #ffe066, #ffd166);
+  color: #1a1400; padding: 0.1rem 0.5rem;
+  border-radius: 3px; margin-left: 0.5rem;
+  animation: badgePulse 2s ease-in-out infinite;
+  vertical-align: middle;
+}
+.winner-badge.show { display: inline-block; }
+
+/* Separator between lanes */
+.scoreboard::before {
+  display: none;
+}
+
+/* ─── History Panels (side columns in scoreboard) ─── */
+.history-panel {
+  display: flex; flex-direction: column;
+  background: rgba(4,6,14,0.98);
+  overflow-y: auto;
+  scrollbar-width: thin;
+  scrollbar-color: rgba(255,255,255,0.08) transparent;
+}
+.history-panel.left-hist { border-right: 1px solid var(--row-border); }
+.history-panel.right-hist { border-left: 1px solid var(--row-border); }
+.history-panel .hist-header {
+  text-align: center; padding: 0.35rem 0.3rem;
+  font-size: 0.5rem; font-weight: 800;
+  text-transform: uppercase; letter-spacing: 0.1em;
+  color: rgba(255,255,255,0.2);
+  border-bottom: 1px solid var(--row-border);
+  flex-shrink: 0;
+}
+.history-table {
+  width: 100%; border-collapse: collapse;
+  font-family: var(--mono); font-size: 0.55rem;
+}
+.history-table th {
+  font-size: 0.4rem; font-weight: 700;
+  text-transform: uppercase; letter-spacing: 0.06em;
+  color: rgba(255,255,255,0.2); text-align: center;
+  padding: 0.2rem 0.15rem; border-bottom: 1px solid var(--row-border);
+  position: sticky; top: 0; background: rgba(4,6,14,0.98);
+}
+.history-table td {
+  text-align: center; padding: 0.2rem 0.15rem;
+  color: rgba(255,255,255,0.4); font-weight: 600;
+  border-bottom: 1px solid rgba(255,255,255,0.03);
+  white-space: nowrap;
+}
+.history-table tr:last-child td { border-bottom: none; }
+.history-table tr.latest td { color: var(--value-color); font-weight: 700; }
+.history-table .h-win { color: var(--green); font-weight: 800; }
+.history-table .h-loss { color: var(--red); }
+
+/* ─── Empty State ─────────────────────────────────── */
+.empty-state {
+  display: flex; align-items: center; justify-content: center;
+  height: 100%; color: rgba(255,255,255,0.2);
+  font-size: 0.85rem; flex-direction: column; gap: 0.5rem;
+}
+.empty-state svg { width: 40px; height: 40px; opacity: 0.15; }
+.hidden { display: none !important; }
+
+/* ─── 4-Wide Layout ──────────────────────────────── */
+body.four-wide-mode {
+  padding-bottom: 18vh; /* shorter notes area */
+  overflow: hidden;
+}
+
+/* ROW 1: Driver strip — 5 columns: d1 | d2 | center | d3 | d4 */
+body.four-wide-mode .driver-strip {
+  grid-template-columns: 1fr 1fr auto 1fr 1fr;
+}
+/* Fix DOM order to match grid: left(1) right(2) center(3) lane3(4) lane4(5) */
+body.four-wide-mode #driver-left   { order: 1; }
+body.four-wide-mode #driver-right  { order: 2; }
+body.four-wide-mode #driver-center { order: 3; }
+body.four-wide-mode #driver-lane3  { order: 4; }
+body.four-wide-mode #driver-lane4  { order: 5; }
+/* Center text for lanes 2 & 3 (inner lanes) */
+body.four-wide-mode #driver-right,
+body.four-wide-mode #driver-right *,
+body.four-wide-mode #driver-lane3,
+body.four-wide-mode #driver-lane3 * {
+  text-align: center !important;
+}
+body.four-wide-mode #driver-right .driver-name-line,
+body.four-wide-mode #driver-lane3 .driver-name-line {
+  justify-content: center !important;
+}
+body.four-wide-mode .driver-card {
+  padding: 0.4rem 0.6rem;
+  overflow: hidden;
+  min-width: 0;
+}
+body.four-wide-mode .driver-card .driver-detail {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  max-width: 100%;
+}
+body.four-wide-mode .driver-card .driver-lines {
+  font-size: 0.65rem;
+  line-height: 1.2;
+  max-height: 4.5em;
+  overflow: hidden;
+}
+body.four-wide-mode .driver-photo, body.four-wide-mode .driver-photo-placeholder {
+  display: none !important;
+}
+body.four-wide-mode .driver-name { font-size: 1rem; }
+body.four-wide-mode .driver-carnum { font-size: 0.9rem; }
+body.four-wide-mode .driver-detail { font-size: 0.75rem; }
+body.four-wide-mode .driver-center { min-width: 120px; padding: 0.4rem 0.8rem; }
+body.four-wide-mode .driver-center-cat { font-size: 1rem; }
+body.four-wide-mode .driver-center-rnd { font-size: 0.7rem; }
+
+/* ROW 2: Scoreboard — 5 columns for timing numbers */
+body.four-wide-mode .scoreboard {
+  grid-template-columns: 1fr 1fr auto 1fr 1fr;
+  flex-shrink: 0;
+}
+body.four-wide-mode .score-row {
+  height: 1.55rem;
+  padding: 0 0.2rem;
+}
+body.four-wide-mode .score-label {
+  font-size: 0.7rem;
+}
+body.four-wide-mode .score-value {
+  font-size: clamp(0.8rem, 1.6vw, 1.2rem) !important;
+}
+body.four-wide-mode .score-value.dial {
+  font-size: clamp(0.9rem, 1.8vw, 1.4rem) !important;
+}
+body.four-wide-mode .score-value.et {
+  font-size: clamp(1rem, 2vw, 1.6rem) !important;
+}
+body.four-wide-mode .lane-header {
+  font-size: 0.6rem;
+  padding: 0.15rem 0;
+}
+/* Make body flex so history fills remaining space */
+body.four-wide-mode {
+  display: flex;
+  flex-direction: column;
+}
+body.four-wide-mode .ann-topbar,
+body.four-wide-mode .driver-strip,
+body.four-wide-mode .scoreboard {
+  flex-shrink: 0;
+}
+/* ROW 3: History — 5 columns with empty center */
+body.four-wide-mode .four-wide-history {
+  display: grid;
+  grid-template-columns: 1fr 1fr auto 1fr 1fr;
+  gap: 0;
+  background: var(--board-bg);
+  border-top: 1px solid var(--row-border);
+  flex: 1;
+  min-height: 40px;
+  margin-top: 0;
+  flex: 1;
+  min-height: 0;
+  overflow: hidden;
+}
+body.four-wide-mode .four-wide-history .history-panel {
+  border-right: 1px solid var(--row-border);
+  overflow-y: auto;
+  scrollbar-width: thin;
+  scrollbar-color: rgba(255,255,255,0.1) transparent;
+}
+body.four-wide-mode .four-wide-history .history-panel:last-of-type {
+  border-right: none;
+}
+body.four-wide-mode .four-wide-history .history-center-spacer {
+  background: rgba(6,8,16,0.98);
+  border-left: 1px solid var(--row-border);
+  border-right: 1px solid var(--row-border);
+  min-width: 100px;
+}
+
+/* ROW 4: Notes — 4 equal columns */
+body.four-wide-mode .ann-notes {
+  grid-template-columns: 1fr 1fr 1fr 1fr;
+  height: 20vh;
+}
+
+/* 4-wide lane header colors */
+.lane-header.lane3-hdr { color: rgba(34,197,94,0.6); }
+.lane-header.lane4-hdr { color: rgba(255,165,0,0.6); }
+
+/* Placement badges for 4-wide */
+.winner-badge.place-ru { background: #3357ff; color: #fff; }
+.winner-badge.place-3 { background: #555; color: #fff; }
+.winner-badge.place-4 { background: #333; color: #fff; }
+.winner-badge.place-w { background: linear-gradient(135deg, #ffd166, #ffe066, #ffd166); color: #1a1400; }
+
+/* Test button dropdown */
+.test-btn-group { position: relative; display: inline-flex; }
+.test-btn-menu { display: none; position: absolute; top: 100%; right: 0; background: rgba(10,14,26,0.98); border: 1px solid rgba(255,209,102,0.2); border-radius: 4px; z-index: 20; min-width: 120px; margin-top: 2px; }
+.test-btn-group:hover .test-btn-menu { display: block; }
+.test-btn-menu button { display: block; width: 100%; text-align: left; background: none; border: none; color: var(--gold); padding: 0.3rem 0.6rem; font-size: 0.6rem; font-weight: 700; cursor: pointer; }
+.test-btn-menu button:hover { background: rgba(255,209,102,0.1); }
+
+/* ── Mobile: Stack vertically ── */
+@media (max-width: 768px) {
+  /* Driver strip: stack L then R */
+  .driver-strip { flex-direction: column !important; gap: 0.3rem; padding: 0.3rem; }
+  .driver-strip > div { width: 100% !important; max-width: 100% !important; flex: none !important; }
+  .driver-center { order: -1 !important; text-align: center; padding: 0.3rem !important; }
+  .driver-left, .driver-right { text-align: left !important; }
+  .driver-name { font-size: 1rem !important; }
+  .driver-detail, .driver-lines { font-size: 0.65rem !important; }
+
+  /* Scoreboard: stack each lane vertically */
+  .scoreboard { display: flex !important; flex-direction: column !important; gap: 0; overflow-y: auto; }
+  .scoreboard .score-rows { width: 100% !important; }
+  /* Show lane headers as section dividers */
+  .lane-header { display: block !important; text-align: center; font-weight: 800; font-size: 0.7rem; letter-spacing: 0.1em; padding: 0.4rem; }
+  .score-row { display: grid; grid-template-columns: 90px 1fr; gap: 0.3rem; }
+  .score-label { text-align: left !important; font-size: 0.6rem !important; padding-left: 0.5rem; }
+  .score-value { font-size: 1rem !important; text-align: right !important; padding-right: 0.5rem; }
+  .score-value.et { font-size: 1.3rem !important; }
+  .score-value.dial { font-size: 1.1rem !important; }
+
+  /* History: stack */
+  .hist-panel, .four-wide-history { display: flex !important; flex-direction: column !important; }
+  .hist-panel > div, .four-wide-history > div { width: 100% !important; flex: none !important; }
+
+  /* Notes: stack */
+  .ann-notes { display: flex !important; flex-direction: column !important; }
+  .ann-notes > div { width: 100% !important; }
+
+  /* Nav bar */
+  .ann-topbar { flex-wrap: wrap; gap: 0.3rem; }
+  .ann-nav { gap: 0.3rem; }
+  .nav-btn { padding: 0.3rem 0.8rem; font-size: 0.8rem; }
+
+  /* Reduce body padding */
+  body { padding-bottom: 10vh !important; }
+
+  /* 4-wide mobile: same stacking */
+  body.four-wide-mode .driver-strip { flex-direction: column !important; }
+  body.four-wide-mode .scoreboard { display: flex !important; flex-direction: column !important; }
+  body.four-wide-mode .four-wide-history { display: flex !important; flex-direction: column !important; }
+  body.four-wide-mode .ann-notes { grid-template-columns: 1fr !important; }
+}
+</style>
+</head>
+<body>
+
+<!-- ─── Top Bar ─────────────────────────────────── -->
+<div class="topbar">
+  <a href="/" class="topbar-back">
+    <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M15 19l-7-7 7-7"/></svg>
+    Back
+  </a>
+  <div class="topbar-center">
+    <span class="live-dot" id="live-dot"></span>
+    <button class="nav-btn" id="prev-btn" title="Previous run">&#9664; PREV</button>
+    <span id="topbar-label" style="font-size:0.7rem;font-weight:800;">LIVE</span>
+    <button class="nav-btn" id="next-btn" title="Next run">NEXT &#9654;</button>
+    <button class="live-go-btn" id="live-go-btn" title="Jump to live">&#9679; LIVE</button>
+  </div>
+  <div class="test-btn-group">
+    <button class="test-btn" id="test-btn">&#127937; Test Run</button>
+    <div class="test-btn-menu">
+      <button id="test-2wide-btn">2-Wide Test</button>
+      <button id="test-4wide-btn">4-Wide Test</button>
+    </div>
+  </div>
+</div>
+
+<!-- ─── Driver Info Strip (3-col with category center) ── -->
+<div class="driver-strip" id="driver-strip">
+  <div class="driver-card left-card" id="driver-left">
+    <div class="driver-photo-placeholder" id="photo-left">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><circle cx="12" cy="8" r="4"/><path d="M5.5 21a6.5 6.5 0 0113 0"/></svg>
+    </div>
+    <div class="driver-info">
+      <div class="driver-name-line">
+        <span class="driver-name" id="name-left">---</span>
+        <span class="driver-carnum" id="carnum-left"></span>
+      </div>
+      <div class="driver-detail" id="detail1-left"></div>
+      <div class="driver-detail" id="detail2-left"></div>
+      <div class="driver-detail" id="detail3-left" style="font-size:0.75rem;color:rgba(255,209,102,0.5);white-space:normal;line-height:1.25;margin-top:0.15rem;"></div>
+    </div>
+  </div>
+  <div class="driver-center" id="driver-center">
+    <div class="driver-center-cat" id="center-category">—</div>
+    <div class="driver-center-rnd" id="center-round"></div>
+  </div>
+  <div class="driver-card right-card" id="driver-right">
+    <div class="driver-info" style="text-align:right;">
+      <div class="driver-name-line">
+        <span class="driver-name" id="name-right">---</span>
+        <span class="driver-carnum" id="carnum-right"></span>
+      </div>
+      <div class="driver-detail" id="detail1-right"></div>
+      <div class="driver-detail" id="detail2-right"></div>
+      <div class="driver-detail" id="detail3-right" style="font-size:0.75rem;color:rgba(255,209,102,0.5);white-space:normal;line-height:1.25;margin-top:0.15rem;"></div>
+    </div>
+    <div class="driver-photo-placeholder" id="photo-right">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><circle cx="12" cy="8" r="4"/><path d="M5.5 21a6.5 6.5 0 0113 0"/></svg>
+    </div>
+  </div>
+</div>
+
+<!-- ─── Main Scoreboard (5-column) ────────────── -->
+<div class="scoreboard" id="scoreboard">
+  <!-- Left History Panel -->
+  <div class="history-panel left-hist" id="history-left">
+    <div class="hist-header">Previous Runs</div>
+    <table class="history-table" id="history-table-left">
+      <thead><tr><th>Rnd</th><th>R/T</th><th>E.T.</th><th>MPH</th><th>W/L</th></tr></thead>
+      <tbody></tbody>
+    </table>
+  </div>
+  <!-- Left Lane Values -->
+  <div class="lane-col" id="col-left">
+    <div class="lane-header left-hdr">Left Lane<span class="winner-badge" id="badge-left">WINNER</span></div>
+    <div class="score-rows" id="rows-left">
+      <div class="score-row"><span class="score-value dial empty" id="v-left-dial">&mdash;</span></div>
+      <div class="score-row"><span class="score-value rt empty" id="v-left-rt">&mdash;</span></div>
+      <div class="score-row"><span class="score-value mid empty" id="v-left-sixty">&mdash;</span></div>
+      <div class="score-row"><span class="score-value mid empty" id="v-left-three30">&mdash;</span></div>
+      <div class="score-row"><span class="score-value mid empty" id="v-left-six60">&mdash;</span></div>
+      <div class="score-row"><span class="score-value mid empty" id="v-left-six60_speed">&mdash;</span></div>
+      <div class="score-row"><span class="score-value mid empty" id="v-left-thousand">&mdash;</span></div>
+      <div class="score-row"><span class="score-value et empty" id="v-left-et">&mdash;</span></div>
+      <div class="score-row"><span class="score-value spd empty" id="v-left-speed">&mdash;</span></div>
+      <div class="score-row"><span class="score-value mov empty" id="v-left-mov">&mdash;</span></div>
+    </div>
+  </div>
+  <!-- Center Labels -->
+  <div class="center-labels">
+    <div class="lane-header">VS</div>
+    <div class="label-rows">
+      <div class="label-row"><span class="score-label">DIAL-IN</span></div>
+      <div class="label-row"><span class="score-label">R/T</span></div>
+      <div class="label-row"><span class="score-label">60 FT</span></div>
+      <div class="label-row"><span class="score-label">330 FT</span></div>
+      <div class="label-row"><span class="score-label">660 FT</span></div>
+      <div class="label-row"><span class="score-label">660 MPH</span></div>
+      <div class="label-row"><span class="score-label">1000 FT</span></div>
+      <div class="label-row"><span class="score-label">E.T.</span></div>
+      <div class="label-row"><span class="score-label">MPH</span></div>
+      <div class="label-row"><span class="score-label">MOV</span></div>
+    </div>
+  </div>
+  <!-- Right Lane Values -->
+  <div class="lane-col" id="col-right">
+    <div class="lane-header right-hdr">Right Lane<span class="winner-badge" id="badge-right">WINNER</span></div>
+    <div class="score-rows" id="rows-right">
+      <div class="score-row"><span class="score-value dial empty" id="v-right-dial">&mdash;</span></div>
+      <div class="score-row"><span class="score-value rt empty" id="v-right-rt">&mdash;</span></div>
+      <div class="score-row"><span class="score-value mid empty" id="v-right-sixty">&mdash;</span></div>
+      <div class="score-row"><span class="score-value mid empty" id="v-right-three30">&mdash;</span></div>
+      <div class="score-row"><span class="score-value mid empty" id="v-right-six60">&mdash;</span></div>
+      <div class="score-row"><span class="score-value mid empty" id="v-right-six60_speed">&mdash;</span></div>
+      <div class="score-row"><span class="score-value mid empty" id="v-right-thousand">&mdash;</span></div>
+      <div class="score-row"><span class="score-value et empty" id="v-right-et">&mdash;</span></div>
+      <div class="score-row"><span class="score-value spd empty" id="v-right-speed">&mdash;</span></div>
+      <div class="score-row"><span class="score-value mov empty" id="v-right-mov">&mdash;</span></div>
+    </div>
+  </div>
+  <!-- Right History Panel -->
+  <div class="history-panel right-hist" id="history-right">
+    <div class="hist-header">Previous Runs</div>
+    <table class="history-table" id="history-table-right">
+      <thead><tr><th>Rnd</th><th>R/T</th><th>E.T.</th><th>MPH</th><th>W/L</th></tr></thead>
+      <tbody></tbody>
+    </table>
+  </div>
+</div>
+
+<!-- ─── Notes Section (fixed bottom corners) ──── -->
+<div class="ann-notes" id="ann-notes">
+  <div class="ann-note">
+    <div class="ann-note-header">
+      <span class="ann-note-label">Notes — Left</span>
+      <button class="ann-note-edit" onclick="editNote('left')">Edit</button>
+    </div>
+    <div id="note-wrap-left">
+      <div class="ann-note-text" id="note-text-left" data-member-id=""></div>
+    </div>
+  </div>
+  <div class="ann-note">
+    <div class="ann-note-header">
+      <span class="ann-note-label">Notes — Right</span>
+      <button class="ann-note-edit" onclick="editNote('right')">Edit</button>
+    </div>
+    <div id="note-wrap-right">
+      <div class="ann-note-text" id="note-text-right" data-member-id=""></div>
+    </div>
+  </div>
+  <!-- 4-wide extra notes (hidden by default) -->
+  <div class="ann-note hidden" id="note-lane3-wrap">
+    <div class="ann-note-header">
+      <span class="ann-note-label">Notes — Lane 3</span>
+      <button class="ann-note-edit" onclick="editNote('lane3')">Edit</button>
+    </div>
+    <div id="note-wrap-lane3">
+      <div class="ann-note-text" id="note-text-lane3" data-member-id=""></div>
+    </div>
+  </div>
+  <div class="ann-note hidden" id="note-lane4-wrap">
+    <div class="ann-note-header">
+      <span class="ann-note-label">Notes — Lane 4</span>
+      <button class="ann-note-edit" onclick="editNote('lane4')">Edit</button>
+    </div>
+    <div id="note-wrap-lane4">
+      <div class="ann-note-text" id="note-text-lane4" data-member-id=""></div>
+    </div>
+  </div>
+</div>
+
+<script type="module">
+import { initializeApp } from "https://www.gstatic.com/firebasejs/11.1.0/firebase-app.js";
+import { getDatabase, ref, onValue } from "https://www.gstatic.com/firebasejs/11.1.0/firebase-database.js";
+
+const FIREBASE_CONFIG = {
+  apiKey: "AIzaSyCDfI8vVi4VjPYAmT7nNL4RvzB15livS54",
+  authDomain: "nhra-timing-api.firebaseapp.com",
+  databaseURL: "https://nhra-timing-api-default-rtdb.firebaseio.com",
+  projectId: "nhra-timing-api",
+  storageBucket: "nhra-timing-api.firebasestorage.app",
+  messagingSenderId: "1043698542673",
+  appId: "1:1043698542673:web:8d98acb05415ed51e1b070",
+};
+
+const API = "/api";
+const app = initializeApp(FIREBASE_CONFIG);
+const rtdb = getDatabase(app);
+const deviceId = localStorage.getItem("tt-selected-device");
+
+if (!deviceId) {
+  document.getElementById("topbar-label").textContent = "No device selected";
+  document.getElementById("topbar-label").style.color = "#ef4444";
+}
+
+// ─── Field definitions ──────────────────────────────
+const FIELDS = [
+  { key: "dial_in", id: "dial" },
+  { key: "rt",      id: "rt" },
+  { key: "sixty",   id: "sixty" },
+  { key: "three30", id: "three30" },
+  { key: "six60",   id: "six60" },
+  { key: "six60_speed", id: "six60_speed" },
+  { key: "thousand", id: "thousand" },
+  { key: "et",      id: "et" },
+  { key: "speed",   id: "speed" },
+  { key: "mov",     id: "mov" },
+];
+
+// ─── State ──────────────────────────────────────────
+let prevValues = { left: {}, right: {}, lane3: {}, lane4: {} };
+let is4WideMode = false;
+let lastRaceKey = "";
+let lastRace = null;
+const techCardCache = {};
+
+// ─── DOM helpers ────────────────────────────────────
+function $(id) { return document.getElementById(id); }
+
+function setVal(side, fieldId, value, flashClass) {
+  const el = $(`v-${side}-${fieldId}`);
+  if (!el) return;
+  const prev = el.textContent.trim();
+  const display = value || "\u2014";
+  if (display === prev) return; // no change
+
+  el.textContent = display;
+  if (value) {
+    el.classList.remove("empty");
+    // trigger flash
+    if (flashClass) {
+      el.classList.remove("flash", "flash-gold", "flash-et");
+      void el.offsetWidth; // force reflow
+      el.classList.add(flashClass);
+    }
+  } else {
+    el.classList.add("empty");
+  }
+}
+
+function flashType(fieldId) {
+  if (fieldId === "dial") return "flash-gold";
+  if (fieldId === "et") return "flash-et";
+  return "flash";
+}
+
+// ─── Tech card fetching ─────────────────────────────
+async function fetchTechCard(memberNum) {
+  if (!memberNum) return null;
+  if (techCardCache[memberNum]) return techCardCache[memberNum];
+  try {
+    const resp = await fetch(`${API}/tech-cards/${memberNum}`);
+    if (!resp.ok) return null;
+    const data = await resp.json();
+    techCardCache[memberNum] = data;
+    return data;
+  } catch { return null; }
+}
+
+async function fetchAllTechCards() {
+  try {
+    const resp = await fetch(`${API}/tech-cards?limit=500`);
+    if (!resp.ok) return [];
+    const data = await resp.json();
+    return data.cards || [];
+  } catch { return []; }
+}
+
+async function fetchRuns(memberNum) {
+  if (!memberNum || !deviceId) return [];
+  try {
+    const resp = await fetch(`${API}/tech-cards/${memberNum}/runs?device_id=${deviceId}`);
+    if (!resp.ok) return [];
+    const data = await resp.json();
+    return data.runs || [];
+  } catch { return []; }
+}
+
+// ─── Driver info rendering ──────────────────────────
+function renderDriverCard(side, race, techCard) {
+  const lane = race[side] || {};
+  const tc = techCard || {};
+  const category = race.category || "";
+  const entry = (tc.entries || []).find(e => e.category === category) || (tc.entries || [])[0] || {};
+
+  const name = lane.name || "---";
+  const carNum = lane.car_num ? `#${lane.car_num}` : "";
+  const className = lane.class_name || entry.class || "";
+
+  // Photo
+  const photoWrap = $(`photo-${side}`);
+  if (tc.photo_url) {
+    photoWrap.outerHTML = `<img src="${tc.photo_url}" class="driver-photo" id="photo-${side}" alt="" onerror="this.outerHTML='<div class=\\'driver-photo-placeholder\\' id=\\'photo-${side}\\'><svg viewBox=\\'0 0 24 24\\' fill=\\'none\\' stroke=\\'currentColor\\' stroke-width=\\'1.5\\'><circle cx=\\'12\\' cy=\\'8\\' r=\\'4\\'/><path d=\\'M5.5 21a6.5 6.5 0 0113 0\\'/></svg></div>'">`;
+  }
+
+  $(`name-${side}`).textContent = name;
+  $(`carnum-${side}`).textContent = carNum;
+
+  // Detail line 1: class + car info
+  const bodyStr = [entry.body_year, entry.body_type].filter(Boolean).join(" ");
+  const engineStr = [entry.engine_make, entry.cui_cc ? entry.cui_cc + "ci" : "", entry.hp ? entry.hp + "hp" : ""].filter(Boolean).join(" ");
+  const parts1 = [className, bodyStr, engineStr].filter(Boolean);
+  $(`detail1-${side}`).textContent = parts1.join(" \u2022 ");
+
+  // Detail line 2: hometown + crew/owner
+  const city = tc.city || "";
+  const state = tc.state || "";
+  const hometown = [city, state].filter(Boolean).join(", ");
+  const crew = entry.crew_chief ? `Crew: ${entry.crew_chief}` : (entry.owner ? `Owner: ${entry.owner}` : "");
+  const occupation = tc.occupation || "";
+  const parts2 = [hometown, crew, occupation].filter(Boolean);
+  $(`detail2-${side}`).textContent = parts2.join(" \u2022 ");
+
+  // Detail line 3: extra lines (line1-line6 from tech card) - each as its own line
+  const extraLines = [tc.line1, tc.line2, tc.line3, tc.line4, tc.line5, tc.line6].filter(Boolean);
+  const detail3 = $(`detail3-${side}`);
+  if (extraLines.length > 0) {
+    detail3.innerHTML = extraLines.map(l => `<div>${l}</div>`).join("");
+  } else {
+    detail3.textContent = "";
+  }
+
+  // Notes
+  const noteText = $(`note-text-${side}`);
+  if (noteText) {
+    const memId = tc.member_num || lane.member_num || "";
+    noteText.dataset.memberId = memId;
+    noteText.textContent = tc.announcer_notes || "";
+  }
+
+  // Store tech card lines for reference
+  currentTechCards[side] = tc;
+}
+
+let currentTechCards = { left: {}, right: {}, lane3: {}, lane4: {} };
+
+window.editNote = function(side) {
+  const noteText = $(`note-text-${side}`);
+  const noteWrap = $(`note-wrap-${side}`);
+  const current = noteText.textContent || "";
+  const memId = noteText.dataset.memberId || "";
+
+  noteWrap.innerHTML = `<textarea class="ann-note-input" id="note-input-${side}">${current}</textarea>
+    <div style="display:flex;gap:0.3rem;margin-top:0.2rem;">
+      <button onclick="saveNote('${side}')" style="background:rgba(34,197,94,0.15);color:#22c55e;border:1px solid rgba(34,197,94,0.2);border-radius:3px;padding:0.1rem 0.5rem;font-size:0.5rem;font-weight:700;cursor:pointer;">Save</button>
+      <button onclick="cancelNote('${side}','${current.replace(/'/g,"\\'")}','${memId}')" style="background:rgba(255,255,255,0.05);color:rgba(255,255,255,0.4);border:1px solid rgba(255,255,255,0.1);border-radius:3px;padding:0.1rem 0.5rem;font-size:0.5rem;cursor:pointer;">Cancel</button>
+    </div>`;
+  $(`note-input-${side}`).focus();
+}
+
+window.cancelNote = function(side, prev, memId) {
+  const noteWrap = $(`note-wrap-${side}`);
+  noteWrap.innerHTML = `<div class="ann-note-text" id="note-text-${side}" data-member-id="${memId}">${prev}</div>`;
+}
+
+window.saveNote = async function(side) {
+  const input = $(`note-input-${side}`);
+  if (!input) return;
+  const text = input.value.trim();
+  const noteText = document.querySelector(`#note-wrap-${side} textarea`);
+  const memId = currentTechCards[side]?.member_num || "";
+
+  // Save to Firestore via PATCH
+  if (memId) {
+    try {
+      await fetch(`/api/tech-cards/${encodeURIComponent(memId)}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ announcer_notes: text }),
+      });
+    } catch(e) { console.error("Save note failed:", e); }
+  }
+
+  const noteWrap = $(`note-wrap-${side}`);
+  noteWrap.innerHTML = `<div class="ann-note-text" id="note-text-${side}" data-member-id="${memId}">${text}</div>`;
+}
+
+// ─── History strip ──────────────────────────────────
+function renderHistory(side, runs) {
+  const tbody = document.querySelector(`#history-table-${side} tbody`);
+  if (!tbody) return;
+  tbody.innerHTML = "";
+  if (!runs || !runs.length) return;
+
+  runs.slice(0, 8).forEach((r, i) => {
+    const isMySide = r.side || side;
+    const prefixMap = { left: "left_", right: "right_", lane3: "lane3_", lane4: "lane4_" };
+    const prefix = prefixMap[isMySide] || (isMySide === "left" ? "left_" : "right_");
+    const rt = r[prefix + "rt"] || r["left_rt"] || r["right_rt"] || "—";
+    const et = r[prefix + "et"] || r["left_et"] || r["right_et"] || "—";
+    const spd = r[prefix + "speed"] || r["left_speed"] || r["right_speed"] || "—";
+    const mov = r[prefix + "mov"] || "—";
+    const isWinner = r.winner === isMySide || (r.winner || "").toUpperCase() === isMySide.toUpperCase();
+    const wl = r.winner ? (isWinner ? "W" : "L") : "";
+    const wlClass = isWinner ? "h-win" : "h-loss";
+    const rnd = r.round || "";
+    const cls = i === 0 ? "latest" : "";
+
+    const tr = document.createElement("tr");
+    tr.className = cls;
+    tr.innerHTML = `<td>${rnd}</td><td>${rt}</td><td>${et}</td><td>${spd}</td><td>${mov}</td><td class="${wlClass}">${wl}</td>`;
+    tbody.appendChild(tr);
+  });
+}
+
+// ─── 4-Wide Mode Management ─────────────────────────
+function makeLaneColHTML(laneId, hdrClass, hdrText) {
+  return `<div class="lane-col" id="col-${laneId}">
+    <div class="lane-header ${hdrClass}">${hdrText}<span class="winner-badge" id="badge-${laneId}">WINNER</span></div>
+    <div class="score-rows" id="rows-${laneId}">
+      <div class="score-row"><span class="score-value dial empty" id="v-${laneId}-dial">&mdash;</span></div>
+      <div class="score-row"><span class="score-value rt empty" id="v-${laneId}-rt">&mdash;</span></div>
+      <div class="score-row"><span class="score-value mid empty" id="v-${laneId}-sixty">&mdash;</span></div>
+      <div class="score-row"><span class="score-value mid empty" id="v-${laneId}-three30">&mdash;</span></div>
+      <div class="score-row"><span class="score-value mid empty" id="v-${laneId}-six60">&mdash;</span></div>
+      <div class="score-row"><span class="score-value mid empty" id="v-${laneId}-six60_speed">&mdash;</span></div>
+      <div class="score-row"><span class="score-value mid empty" id="v-${laneId}-thousand">&mdash;</span></div>
+      <div class="score-row"><span class="score-value et empty" id="v-${laneId}-et">&mdash;</span></div>
+      <div class="score-row"><span class="score-value spd empty" id="v-${laneId}-speed">&mdash;</span></div>
+      <div class="score-row"><span class="score-value mov empty" id="v-${laneId}-mov">&mdash;</span></div>
+    </div>
+  </div>`;
+}
+
+function makeHistPanelHTML(laneId) {
+  return `<div class="history-panel" id="history-${laneId}">
+    <div class="hist-header">Prev Runs</div>
+    <table class="history-table" id="history-table-${laneId}">
+      <thead><tr><th>Rnd</th><th>R/T</th><th>E.T.</th><th>MPH</th><th>W/L</th></tr></thead>
+      <tbody></tbody>
+    </table>
+  </div>`;
+}
+
+const DRIVER_CARD_PLACEHOLDER_SVG = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><circle cx="12" cy="8" r="4"/><path d="M5.5 21a6.5 6.5 0 0113 0"/></svg>';
+
+function enter4WideMode() {
+  if (is4WideMode) return;
+  is4WideMode = true;
+  document.body.classList.add("four-wide-mode");
+
+  // ── ROW 1: Driver strip — rebuild as 5 columns: d1 | d2 | center | d3 | d4 ──
+  const strip = $("driver-strip");
+  const center = $("driver-center");
+
+  // Insert lane 3 driver card after center
+  const lane3Card = document.createElement("div");
+  lane3Card.className = "driver-card";
+  lane3Card.id = "driver-lane3";
+  lane3Card.innerHTML = `
+    <div class="driver-photo-placeholder" id="photo-lane3">${DRIVER_CARD_PLACEHOLDER_SVG}</div>
+    <div class="driver-info">
+      <div class="driver-name-line"><span class="driver-name" id="name-lane3">---</span><span class="driver-carnum" id="carnum-lane3"></span></div>
+      <div class="driver-detail" id="detail1-lane3"></div>
+      <div class="driver-detail" id="detail2-lane3"></div>
+      <div class="driver-detail" id="detail3-lane3" style="font-size:0.75rem;color:rgba(255,209,102,0.5);white-space:normal;line-height:1.25;margin-top:0.15rem;"></div>
+    </div>`;
+  center.after(lane3Card);
+
+  // Insert lane 4 driver card after lane 3
+  const lane4Card = document.createElement("div");
+  lane4Card.className = "driver-card right-card";
+  lane4Card.id = "driver-lane4";
+  lane4Card.innerHTML = `
+    <div class="driver-info" style="text-align:right;">
+      <div class="driver-name-line"><span class="driver-name" id="name-lane4">---</span><span class="driver-carnum" id="carnum-lane4"></span></div>
+      <div class="driver-detail" id="detail1-lane4"></div>
+      <div class="driver-detail" id="detail2-lane4"></div>
+      <div class="driver-detail" id="detail3-lane4" style="font-size:0.75rem;color:rgba(255,209,102,0.5);white-space:normal;line-height:1.25;margin-top:0.15rem;"></div>
+    </div>
+    <div class="driver-photo-placeholder" id="photo-lane4">${DRIVER_CARD_PLACEHOLDER_SVG}</div>`;
+  lane3Card.after(lane4Card);
+
+  // ── ROW 2: Scoreboard — 5 columns: lane1 | lane2 | labels | lane3 | lane4 ──
+  const scoreboard = $("scoreboard");
+  const centerLabelsHTML = `<div class="center-labels">
+    <div class="lane-header">VS</div>
+    <div class="label-rows">
+      <div class="label-row"><span class="score-label">DIAL-IN</span></div>
+      <div class="label-row"><span class="score-label">R/T</span></div>
+      <div class="label-row"><span class="score-label">60 FT</span></div>
+      <div class="label-row"><span class="score-label">330 FT</span></div>
+      <div class="label-row"><span class="score-label">660 FT</span></div>
+      <div class="label-row"><span class="score-label">660 MPH</span></div>
+      <div class="label-row"><span class="score-label">1000 FT</span></div>
+      <div class="label-row"><span class="score-label">E.T.</span></div>
+      <div class="label-row"><span class="score-label">MPH</span></div>
+      <div class="label-row"><span class="score-label">MOV</span></div>
+    </div>
+  </div>`;
+
+  scoreboard.innerHTML =
+    makeLaneColHTML("left", "left-hdr", "Lane 1") +
+    makeLaneColHTML("right", "right-hdr", "Lane 2") +
+    centerLabelsHTML +
+    makeLaneColHTML("lane3", "lane3-hdr", "Lane 3") +
+    makeLaneColHTML("lane4", "lane4-hdr", "Lane 4");
+
+  // ── ROW 3: History — insert after scoreboard ──
+  let histRow = $("four-wide-history-row");
+  if (!histRow) {
+    histRow = document.createElement("div");
+    histRow.className = "four-wide-history";
+    histRow.id = "four-wide-history-row";
+    scoreboard.after(histRow);
+  }
+  histRow.innerHTML =
+    makeHistPanelHTML("left") +
+    makeHistPanelHTML("right") +
+    '<div class="history-center-spacer"></div>' +
+    makeHistPanelHTML("lane3") +
+    makeHistPanelHTML("lane4");
+
+  // Show 4-wide notes
+  const noteLane3 = $("note-lane3-wrap");
+  const noteLane4 = $("note-lane4-wrap");
+  if (noteLane3) noteLane3.classList.remove("hidden");
+  if (noteLane4) noteLane4.classList.remove("hidden");
+}
+
+function exit4WideMode() {
+  if (!is4WideMode) return;
+  is4WideMode = false;
+  document.body.classList.remove("four-wide-mode");
+
+  // Remove lane 3/4 driver cards
+  const lane3Card = $("driver-lane3");
+  const lane4Card = $("driver-lane4");
+  if (lane3Card) lane3Card.remove();
+  if (lane4Card) lane4Card.remove();
+
+  // Remove 4-wide history row
+  const histRow = $("four-wide-history-row");
+  if (histRow) histRow.remove();
+
+  // Rebuild scoreboard as original 2-wide (5 columns: hist-left | lane-left | center-labels | lane-right | hist-right)
+  const scoreboard = $("scoreboard");
+  scoreboard.innerHTML = `
+    <div class="history-panel left-hist" id="history-left">
+      <div class="hist-header">Previous Runs</div>
+      <table class="history-table" id="history-table-left"><thead><tr><th>Rnd</th><th>R/T</th><th>E.T.</th><th>MPH</th><th>W/L</th></tr></thead><tbody></tbody></table>
+    </div>
+    <div class="lane-col" id="col-left">
+      <div class="lane-header left-hdr">Left Lane<span class="winner-badge" id="badge-left">WINNER</span></div>
+      <div class="score-rows" id="rows-left">
+        <div class="score-row"><span class="score-value dial empty" id="v-left-dial">&mdash;</span></div>
+        <div class="score-row"><span class="score-value rt empty" id="v-left-rt">&mdash;</span></div>
+        <div class="score-row"><span class="score-value mid empty" id="v-left-sixty">&mdash;</span></div>
+        <div class="score-row"><span class="score-value mid empty" id="v-left-three30">&mdash;</span></div>
+        <div class="score-row"><span class="score-value mid empty" id="v-left-six60">&mdash;</span></div>
+        <div class="score-row"><span class="score-value mid empty" id="v-left-six60_speed">&mdash;</span></div>
+        <div class="score-row"><span class="score-value mid empty" id="v-left-thousand">&mdash;</span></div>
+        <div class="score-row"><span class="score-value et empty" id="v-left-et">&mdash;</span></div>
+        <div class="score-row"><span class="score-value spd empty" id="v-left-speed">&mdash;</span></div>
+        <div class="score-row"><span class="score-value mov empty" id="v-left-mov">&mdash;</span></div>
+      </div>
+    </div>
+    <div class="center-labels">
+      <div class="lane-header">VS</div>
+      <div class="label-rows">
+        <div class="label-row"><span class="score-label">DIAL-IN</span></div>
+        <div class="label-row"><span class="score-label">R/T</span></div>
+        <div class="label-row"><span class="score-label">60 FT</span></div>
+        <div class="label-row"><span class="score-label">330 FT</span></div>
+        <div class="label-row"><span class="score-label">660 FT</span></div>
+        <div class="label-row"><span class="score-label">660 MPH</span></div>
+        <div class="label-row"><span class="score-label">1000 FT</span></div>
+        <div class="label-row"><span class="score-label">E.T.</span></div>
+        <div class="label-row"><span class="score-label">MPH</span></div>
+        <div class="label-row"><span class="score-label">MOV</span></div>
+      </div>
+    </div>
+    <div class="lane-col" id="col-right">
+      <div class="lane-header right-hdr">Right Lane<span class="winner-badge" id="badge-right">WINNER</span></div>
+      <div class="score-rows" id="rows-right">
+        <div class="score-row"><span class="score-value dial empty" id="v-right-dial">&mdash;</span></div>
+        <div class="score-row"><span class="score-value rt empty" id="v-right-rt">&mdash;</span></div>
+        <div class="score-row"><span class="score-value mid empty" id="v-right-sixty">&mdash;</span></div>
+        <div class="score-row"><span class="score-value mid empty" id="v-right-three30">&mdash;</span></div>
+        <div class="score-row"><span class="score-value mid empty" id="v-right-six60">&mdash;</span></div>
+        <div class="score-row"><span class="score-value mid empty" id="v-right-six60_speed">&mdash;</span></div>
+        <div class="score-row"><span class="score-value mid empty" id="v-right-thousand">&mdash;</span></div>
+        <div class="score-row"><span class="score-value et empty" id="v-right-et">&mdash;</span></div>
+        <div class="score-row"><span class="score-value spd empty" id="v-right-speed">&mdash;</span></div>
+        <div class="score-row"><span class="score-value mov empty" id="v-right-mov">&mdash;</span></div>
+      </div>
+    </div>
+    <div class="history-panel right-hist" id="history-right">
+      <div class="hist-header">Previous Runs</div>
+      <table class="history-table" id="history-table-right"><thead><tr><th>Rnd</th><th>R/T</th><th>E.T.</th><th>MPH</th><th>W/L</th></tr></thead><tbody></tbody></table>
+    </div>`;
+
+  // Hide 4-wide notes
+  const noteLane3 = $("note-lane3-wrap");
+  const noteLane4 = $("note-lane4-wrap");
+  if (noteLane3) noteLane3.classList.add("hidden");
+  if (noteLane4) noteLane4.classList.add("hidden");
+
+  // Reset driver strip to 3-col
+  const strip = $("driver-strip");
+  if (strip) strip.style.gridTemplateColumns = "";
+}
+
+function getAllLanes() {
+  return is4WideMode ? ["left", "right", "lane3", "lane4"] : ["left", "right"];
+}
+
+// ─── Clear all values ───────────────────────────────
+function clearBoard() {
+  FIELDS.forEach(f => {
+    getAllLanes().forEach(side => {
+      const el = $(`v-${side}-${f.id}`);
+      if (el) {
+        el.textContent = "\u2014";
+        el.classList.add("empty");
+        el.classList.remove("flash", "flash-gold", "flash-et", "winner-et", "winner-mov");
+      }
+    });
+  });
+  getAllLanes().forEach(side => {
+    const badge = $(`badge-${side}`);
+    if (badge) badge.classList.remove("show");
+    const col = $(`col-${side}`);
+    if (col) col.classList.remove("winner-col", "dimmed");
+  });
+  prevValues = { left: {}, right: {}, lane3: {}, lane4: {} };
+}
+
+// ─── Render race data to scoreboard ─────────────────
+function updateScoreboard(race) {
+  if (!race) return;
+  const winner = race.winner || "";
+
+  getAllLanes().forEach(side => {
+    const lane = race[side] || {};
+    FIELDS.forEach(f => {
+      const val = lane[f.key] || "";
+      const prevVal = (prevValues[side] || {})[f.key] || "";
+      if (val && val !== prevVal) {
+        setVal(side, f.id, val, flashType(f.id));
+        if (!prevValues[side]) prevValues[side] = {};
+        prevValues[side][f.key] = val;
+      }
+    });
+  });
+
+  // Winner styling
+  if (is4WideMode) {
+    // 4-wide: check placements per lane
+    const lanes = getAllLanes();
+    const hasAllET = lanes.every(s => (race[s] || {}).et);
+    const isComplete = race.complete || (hasAllET && winner);
+
+    if (isComplete && race.placements) {
+      // placements: { left: "W", right: "R", lane3: "3", lane4: "4" }
+      lanes.forEach(side => {
+        const placement = (race.placements || {})[side] || "";
+        const badge = $(`badge-${side}`);
+        const col = $(`col-${side}`);
+        if (placement === "W") {
+          if (col) col.classList.add("winner-col");
+          if (badge) { badge.textContent = "WINNER"; badge.className = "winner-badge place-w show"; }
+          const etEl = $(`v-${side}-et`);
+          const movEl = $(`v-${side}-mov`);
+          if (etEl) etEl.classList.add("winner-et");
+          if (movEl) movEl.classList.add("winner-mov");
+        } else if (placement === "R") {
+          if (badge) { badge.textContent = "RUNNER-UP"; badge.className = "winner-badge place-ru show"; }
+        } else if (placement === "3") {
+          if (col) col.classList.add("dimmed");
+          if (badge) { badge.textContent = "3RD"; badge.className = "winner-badge place-3 show"; }
+        } else if (placement === "4") {
+          if (col) col.classList.add("dimmed");
+          if (badge) { badge.textContent = "4TH"; badge.className = "winner-badge place-4 show"; }
+        }
+      });
+    }
+  } else {
+    // 2-wide: original logic
+    const leftLane = race.left || {};
+    const rightLane = race.right || {};
+    const isComplete = race.complete || (leftLane.et && rightLane.et && winner);
+
+    if (isComplete) {
+      const leftWin = winner === "left" || winner === leftLane.name;
+      const rightWin = winner === "right" || winner === rightLane.name;
+      const winSide = leftWin ? "left" : (rightWin ? "right" : "");
+      const loseSide = winSide === "left" ? "right" : "left";
+
+      if (winSide) {
+        $(`col-${winSide}`).classList.add("winner-col");
+        $(`col-${loseSide}`).classList.add("dimmed");
+        $(`badge-${winSide}`).classList.add("show");
+        $(`v-${winSide}-et`).classList.add("winner-et");
+        $(`v-${winSide}-mov`).classList.add("winner-mov");
+      }
+    }
+  }
+}
+
+// ─── Category/round in center panel ─────────────────
+function updateTopBar(race) {
+  if (!race) return;
+  const cat = race.category || "";
+  const round = race.round || "";
+  $("center-category").textContent = cat || "\u2014";
+  $("center-round").textContent = round || "";
+}
+
+// ─── Run history navigation ─────────────────────────
+let completedRuns = [];
+let historyIndex = -1; // -1 = live mode
+
+function loadCompletedRuns() {
+  if (!deviceId) return;
+  fetch(`/api/runs?device_id=${encodeURIComponent(deviceId)}&limit=50`)
+    .then(r => r.json())
+    .then(d => {
+      completedRuns = (d.races || []).reverse(); // oldest first
+      updateNavButtons();
+    })
+    .catch(() => {});
+}
+
+function updateNavButtons() {
+  const prev = $("prev-btn");
+  const next = $("next-btn");
+  const label = $("topbar-label");
+  const liveBtn = $("live-go-btn");
+  if (historyIndex === -1) {
+    label.textContent = "LIVE";
+    label.style.color = "rgba(34,197,94,0.8)";
+    prev.disabled = completedRuns.length === 0;
+    next.disabled = true;
+    if (liveBtn) liveBtn.classList.remove("show");
+  } else {
+    label.textContent = `Run ${historyIndex + 1} / ${completedRuns.length}`;
+    label.style.color = "rgba(255,209,102,0.8)";
+    prev.disabled = historyIndex <= 0;
+    next.disabled = false;
+    if (liveBtn) liveBtn.classList.add("show");
+  }
+}
+
+function goToLive() {
+  historyIndex = -1;
+  lastRaceKey = "";
+  prevValues = { left: {}, right: {}, lane3: {}, lane4: {} };
+  if (is4WideMode) exit4WideMode();
+  if (lastRace) {
+    renderRace(lastRace);
+  }
+  updateNavButtons();
+}
+
+function showHistoryRun(idx) {
+  if (idx < 0 || idx >= completedRuns.length) return;
+  historyIndex = idx;
+  const run = completedRuns[idx];
+  // Convert flat run to race object format
+  const race = {
+    category: run.category || "", round: run.round || "",
+    complete: true, winner: (run.winner || "").toUpperCase(),
+    left: {
+      name: run.left_name, car_num: run.left_car_num, class_name: run.left_class,
+      member_num: run.left_member_num || "", dial_in: run.left_dial,
+      rt: run.left_rt, sixty: run.left_sixty, three30: run.left_three30,
+      six60: run.left_six60, six60_speed: run.left_six60_speed,
+      thousand: run.left_thousand, et: run.left_et, speed: run.left_speed,
+      mov: run.left_mov
+    },
+    right: {
+      name: run.right_name, car_num: run.right_car_num, class_name: run.right_class,
+      member_num: run.right_member_num || "", dial_in: run.right_dial,
+      rt: run.right_rt, sixty: run.right_sixty, three30: run.right_three30,
+      six60: run.right_six60, six60_speed: run.right_six60_speed,
+      thousand: run.right_thousand, et: run.right_et, speed: run.right_speed,
+      mov: run.right_mov
+    }
+  };
+  lastRaceKey = ""; // force full render
+  prevValues = { left: {}, right: {} };
+  renderRace(race);
+  updateNavButtons();
+}
+
+$("prev-btn").addEventListener("click", () => {
+  if (historyIndex === -1) {
+    // Go to most recent completed run
+    loadCompletedRuns();
+    setTimeout(() => {
+      if (completedRuns.length > 0) showHistoryRun(completedRuns.length - 1);
+    }, 500);
+  } else if (historyIndex > 0) {
+    showHistoryRun(historyIndex - 1);
+  }
+});
+
+$("next-btn").addEventListener("click", () => {
+  if (historyIndex >= 0 && historyIndex < completedRuns.length - 1) {
+    showHistoryRun(historyIndex + 1);
+  } else {
+    goToLive();
+  }
+});
+
+$("live-go-btn").addEventListener("click", () => {
+  goToLive();
+});
+
+// Load runs for nav
+loadCompletedRuns();
+
+// ─── Main render orchestration ──────────────────────
+async function renderRace(race, skipNewRaceCheck) {
+  if (!race) return;
+  // Don't override when browsing history
+  if (historyIndex !== -1 && !skipNewRaceCheck) {
+    lastRace = race; // save for when they click LIVE
+    return;
+  }
+
+  try {
+    // Auto-detect 4-wide from data
+    const raceIs4Wide = !!((race.lane3 && (race.lane3.name || race.lane3.rt || race.lane3.et)) || (race.lane4 && (race.lane4.name || race.lane4.rt || race.lane4.et)));
+    if (raceIs4Wide && !is4WideMode) enter4WideMode();
+    else if (!raceIs4Wide && is4WideMode) exit4WideMode();
+
+    lastRace = race;
+
+    // Use category + round + car numbers + timestamp for unique key
+    const keyParts = [race.category, race.round, race.left?.car_num, race.right?.car_num, race.timestamp || ""];
+    if (raceIs4Wide) {
+      keyParts.push(race.lane3?.car_num, race.lane4?.car_num);
+    }
+    const raceKey = keyParts.join("|");
+    const isNewRace = !skipNewRaceCheck && raceKey !== lastRaceKey;
+
+    if (isNewRace) {
+      lastRaceKey = raceKey;
+      clearBoard();
+
+      // Fetch tech cards and render driver info for all lanes
+      const lanesToFetch = getAllLanes();
+      const memNums = lanesToFetch.map(s => (race[s] || {}).member_num || "");
+
+      try {
+        const tcPromises = memNums.map(m => fetchTechCard(m).catch(() => null));
+        const runPromises = memNums.map(m => fetchRuns(m).catch(() => []));
+        const allTC = await Promise.all(tcPromises);
+        const allRuns = await Promise.all(runPromises);
+
+        lanesToFetch.forEach((side, i) => {
+          renderDriverCard(side, race, allTC[i]);
+          renderHistory(side, allRuns[i]);
+        });
+      } catch(e) {
+        // Still render driver cards without tech card data
+        lanesToFetch.forEach((side) => {
+          renderDriverCard(side, race, null);
+        });
+      }
+    }
+
+    updateTopBar(race);
+    // If race arrives complete with all data, animate the reveal
+    if (race.complete && race.left?.et && !skipNewRaceCheck) {
+      await animateReveal(race);
+    } else {
+      updateScoreboard(race);
+    }
+  } catch(e) {
+    console.error("renderRace error:", e);
+  }
+}
+
+async function animateReveal(race) {
+  const sleep = ms => new Promise(r => setTimeout(r, ms));
+  const fieldGroups = [
+    ["dial_in"],
+    ["rt"],
+    ["sixty"],
+    ["three30"],
+    ["six60", "six60_speed"],
+    ["thousand"],
+    ["et", "speed"],
+    ["mov"],
+  ];
+
+  for (const group of fieldGroups) {
+    // Build partial race with only fields revealed so far
+    const partial = JSON.parse(JSON.stringify(race));
+    const allFields = fieldGroups.flat();
+    const revealedIdx = fieldGroups.indexOf(group);
+
+    // Clear fields after this group
+    getAllLanes().forEach(side => {
+      allFields.forEach((f, fi) => {
+        const groupIdx = fieldGroups.findIndex(g => g.includes(f));
+        if (groupIdx > revealedIdx) {
+          partial[side][f] = "";
+        }
+      });
+    });
+
+    // Don't show winner/MOV until last step
+    if (revealedIdx < fieldGroups.length - 1) {
+      partial.complete = false;
+      partial.winner = "";
+      partial.placements = {};
+    }
+
+    updateScoreboard(partial);
+    await sleep(800);
+  }
+
+  // Final with winner
+  updateScoreboard(race);
+}
+
+// ─── Firebase Realtime Listeners ────────────────────
+if (deviceId) {
+  const statusRef = ref(rtdb, `/devices/${deviceId}/status`);
+  onValue(statusRef, (snap) => {
+    const st = snap.val() || {};
+    const online = st.online;
+    const dot = $("live-dot");
+    dot.classList.toggle("on", !!online);
+  });
+
+  const currentRef = ref(rtdb, `/devices/${deviceId}/raceState/current`);
+  onValue(currentRef, (snap) => {
+    const race = snap.val();
+    if (race) renderRace(race);
+  });
+}
+
+// ─── Test Run Simulation ────────────────────────────
+let testRunning = false;
+
+function rand(min, max) {
+  return min + Math.random() * (max - min);
+}
+
+function genTimes(dial) {
+  const rt = rand(0.005, 0.150);
+  const sixty = dial * 0.141 + rand(-0.02, 0.02);
+  const three30 = dial * 0.385 + rand(-0.03, 0.03);
+  const six60 = dial * 0.595 + rand(-0.03, 0.03);
+  const six60Speed = 85 + rand(0, 45);
+  const thousand = dial * 0.765 + rand(-0.03, 0.03);
+  const et = dial + rand(-0.15, 0.30);
+  const speed = 95 + rand(0, 55);
+
+  return {
+    dial_in: dial.toFixed(2),
+    rt: rt.toFixed(3),
+    sixty: sixty.toFixed(3),
+    three30: three30.toFixed(3),
+    six60: six60.toFixed(3),
+    six60_speed: six60Speed.toFixed(2),
+    thousand: thousand.toFixed(3),
+    et: et.toFixed(3),
+    speed: speed.toFixed(2),
+  };
+}
+
+async function runTestSimulation() {
+  if (testRunning) return;
+  testRunning = true;
+  const btn = $("test-btn");
+  btn.classList.add("running");
+  btn.textContent = "Running...";
+
+  // Fetch tech cards and pick two drivers — prefer info-rich ones
+  const allCards = await fetchAllTechCards();
+  // Score cards by how much info they have
+  const scored = allCards.map(c => {
+    const e = (c.entries || [])[0] || {};
+    let score = 0;
+    if (e.engine_make) score++; if (e.body_type) score++; if (e.cui_cc) score++; if (e.hp) score++;
+    if (e.crew_chief) score++; if (e.owner) score++;
+    if (c.occupation) score++; if (c.city) score++;
+    if (c.line1) score++; if (c.line2) score++; if (c.line3) score++; if (c.line4) score++;
+    return { card: c, score };
+  });
+  scored.sort((a, b) => b.score - a.score);
+  // Top info-rich cards, then shuffle among them for variety
+  const topCards = scored.slice(0, Math.min(20, scored.length));
+  const shuffled = topCards.sort(() => Math.random() - 0.5);
+
+  let leftCard = shuffled[0]?.card || null;
+  let rightCard = shuffled[1]?.card || null;
+  if (leftCard) techCardCache[leftCard.member_num] = leftCard;
+  if (rightCard) techCardCache[rightCard.member_num] = rightCard;
+
+  const leftEntry = leftCard ? ((leftCard.entries || [])[0] || {}) : {};
+  const rightEntry = rightCard ? ((rightCard.entries || [])[0] || {}) : {};
+
+  const leftDial = rand(9.50, 13.00);
+  const rightDial = rand(9.50, 13.00);
+  const leftTimes = genTimes(leftDial);
+  const rightTimes = genTimes(rightDial);
+
+  // Winner by best package
+  const leftPackage = parseFloat(leftTimes.rt) + Math.abs(parseFloat(leftTimes.et) - leftDial);
+  const rightPackage = parseFloat(rightTimes.rt) + Math.abs(parseFloat(rightTimes.et) - rightDial);
+  const winnerSide = leftPackage <= rightPackage ? "left" : "right";
+
+  // MOV
+  const leftTotal = parseFloat(leftTimes.rt) + parseFloat(leftTimes.et) - leftDial;
+  const rightTotal = parseFloat(rightTimes.rt) + parseFloat(rightTimes.et) - rightDial;
+  const mov = Math.abs(leftTotal - rightTotal).toFixed(3);
+
+  const leftName = leftCard ? `${leftCard.first_name} ${leftCard.last_name}`.toUpperCase() : "DRIVER A";
+  const rightName = rightCard ? `${rightCard.first_name} ${rightCard.last_name}`.toUpperCase() : "DRIVER B";
+  const leftCarNum = leftCard ? leftCard.car_number : "100";
+  const rightCarNum = rightCard ? rightCard.car_number : "200";
+  // Map abbreviation to full category name
+  const CAT_NAMES = {STK:"STOCK ELIMINATOR",SS:"SUPER STOCK",SC:"SUPER COMP",SG:"SUPER GAS",SST:"SUPER STREET",
+    TD:"TOP DRAGSTER",TS:"TOP SPORTSMAN",COMP:"COMPETITION ELIMINATOR",TF:"TOP FUEL",FC:"FUNNY CAR",
+    PS:"PRO STOCK",PSM:"PRO STOCK MOTORCYCLE",PM:"PRO MOD",TAD:"TOP ALCOHOL DRAGSTER",TAFC:"TOP ALCOHOL FUNNY CAR",
+    FSS:"FACTORY STOCK SHOWDOWN"};
+  const catCode = leftEntry.category || "STK";
+  const category = CAT_NAMES[catCode] || catCode;
+
+  function makeRace(leftData, rightData, complete, winner) {
+    return {
+      category,
+      round: "E1",
+      left: {
+        name: leftName, car_num: leftCarNum,
+        class_name: leftEntry.class || "",
+        member_num: leftCard ? leftCard.member_num : "",
+        ...leftData,
+      },
+      right: {
+        name: rightName, car_num: rightCarNum,
+        class_name: rightEntry.class || "",
+        member_num: rightCard ? rightCard.member_num : "",
+        ...rightData,
+      },
+      winner: winner || "",
+      complete: complete || false,
+      timestamp: new Date().toISOString(),
+    };
+  }
+
+  const sleep = ms => new Promise(r => setTimeout(r, ms));
+
+  // Generate fake previous runs for history panels
+  function fakeRuns(driverDial, side) {
+    const rounds = ["Q1", "Q2", "Q3", "E1"];
+    const prefix = side + "_";
+    return rounds.map((rnd, i) => {
+      const rt = rand(0.01, 0.12).toFixed(3);
+      const et = (driverDial + rand(-0.1, 0.25)).toFixed(3);
+      const spd = (95 + rand(0, 50)).toFixed(2);
+      const isWin = Math.random() > 0.4;
+      const r = { round: rnd, winner: isWin ? side : "other", side: side };
+      r[prefix + "rt"] = rt;
+      r[prefix + "et"] = et;
+      r[prefix + "speed"] = spd;
+      return r;
+    });
+  }
+
+  // Step 1: Driver info + dial-ins (instant)
+  await renderRace(makeRace(
+    { dial_in: leftTimes.dial_in },
+    { dial_in: rightTimes.dial_in },
+    false, ""
+  ));
+
+  // Render fake history AFTER renderRace (which fetches and clears with empty API results)
+  renderHistory("left", fakeRuns(leftDial, "left"));
+  renderHistory("right", fakeRuns(rightDial, "right"));
+
+  // Step 2: Staging pause
+  await sleep(3000);
+
+  // Step 3: R/T (only new value flashes)
+  await renderRace(makeRace(
+    { dial_in: leftTimes.dial_in, rt: leftTimes.rt },
+    { dial_in: rightTimes.dial_in, rt: rightTimes.rt },
+    false, ""
+  ), true);
+  await sleep(1200);
+
+  // Step 4: 60ft
+  await renderRace(makeRace(
+    { dial_in: leftTimes.dial_in, rt: leftTimes.rt, sixty: leftTimes.sixty },
+    { dial_in: rightTimes.dial_in, rt: rightTimes.rt, sixty: rightTimes.sixty },
+    false, ""
+  ), true);
+  await sleep(1000);
+
+  // Step 5: 330ft
+  await renderRace(makeRace(
+    { dial_in: leftTimes.dial_in, rt: leftTimes.rt, sixty: leftTimes.sixty, three30: leftTimes.three30 },
+    { dial_in: rightTimes.dial_in, rt: rightTimes.rt, sixty: rightTimes.sixty, three30: rightTimes.three30 },
+    false, ""
+  ), true);
+  await sleep(1000);
+
+  // Step 6: 660ft + 660mph
+  await renderRace(makeRace(
+    { dial_in: leftTimes.dial_in, rt: leftTimes.rt, sixty: leftTimes.sixty, three30: leftTimes.three30, six60: leftTimes.six60, six60_speed: leftTimes.six60_speed },
+    { dial_in: rightTimes.dial_in, rt: rightTimes.rt, sixty: rightTimes.sixty, three30: rightTimes.three30, six60: rightTimes.six60, six60_speed: rightTimes.six60_speed },
+    false, ""
+  ), true);
+  await sleep(1000);
+
+  // Step 7: 1000ft
+  await renderRace(makeRace(
+    { dial_in: leftTimes.dial_in, rt: leftTimes.rt, sixty: leftTimes.sixty, three30: leftTimes.three30, six60: leftTimes.six60, six60_speed: leftTimes.six60_speed, thousand: leftTimes.thousand },
+    { dial_in: rightTimes.dial_in, rt: rightTimes.rt, sixty: rightTimes.sixty, three30: rightTimes.three30, six60: rightTimes.six60, six60_speed: rightTimes.six60_speed, thousand: rightTimes.thousand },
+    false, ""
+  ), true);
+  await sleep(1200);
+
+  // Step 8: ET + MPH + Winner + MOV
+  await renderRace(makeRace(
+    { dial_in: leftTimes.dial_in, rt: leftTimes.rt, sixty: leftTimes.sixty, three30: leftTimes.three30, six60: leftTimes.six60, six60_speed: leftTimes.six60_speed, thousand: leftTimes.thousand, et: leftTimes.et, speed: leftTimes.speed, mov: winnerSide === "left" ? mov : "\u2014" },
+    { dial_in: rightTimes.dial_in, rt: rightTimes.rt, sixty: rightTimes.sixty, three30: rightTimes.three30, six60: rightTimes.six60, six60_speed: rightTimes.six60_speed, thousand: rightTimes.thousand, et: rightTimes.et, speed: rightTimes.speed, mov: winnerSide === "right" ? mov : "\u2014" },
+    true, winnerSide
+  ), true);
+
+  // Keep everything visible until next test run
+  testRunning = false;
+  btn.classList.remove("running");
+  btn.textContent = "\u{1F3C1} Test Run";
+}
+
+async function runTest4WideSimulation() {
+  if (testRunning) return;
+  testRunning = true;
+  const btn = $("test-btn");
+  btn.classList.add("running");
+  btn.textContent = "Running 4-Wide...";
+
+  // Enter 4-wide mode
+  enter4WideMode();
+
+  // Fetch tech cards and pick four drivers
+  const allCards = await fetchAllTechCards();
+  const scored = allCards.map(c => {
+    const e = (c.entries || [])[0] || {};
+    let score = 0;
+    if (e.engine_make) score++; if (e.body_type) score++; if (e.cui_cc) score++;
+    if (c.city) score++; if (c.line1) score++;
+    return { card: c, score };
+  });
+  scored.sort((a, b) => b.score - a.score);
+  const topCards = scored.slice(0, Math.min(30, scored.length)).sort(() => Math.random() - 0.5);
+
+  const cards = [topCards[0]?.card, topCards[1]?.card, topCards[2]?.card, topCards[3]?.card];
+  const lanes = ["left", "right", "lane3", "lane4"];
+  const dials = lanes.map(() => rand(9.50, 13.00));
+  const times = dials.map(d => genTimes(d));
+  const names = cards.map((c, i) => c ? `${c.first_name} ${c.last_name}`.toUpperCase() : `DRIVER ${i+1}`);
+  const carNums = cards.map((c, i) => c ? c.car_number : String(100 + i * 100));
+  const entries = cards.map(c => c ? ((c.entries || [])[0] || {}) : {});
+
+  // Cache tech cards
+  cards.forEach(c => { if (c) techCardCache[c.member_num] = c; });
+
+  // Determine placements by package (RT + |ET - dial|)
+  const packages = dials.map((d, i) => parseFloat(times[i].rt) + Math.abs(parseFloat(times[i].et) - d));
+  const sorted = packages.map((p, i) => ({ pkg: p, idx: i })).sort((a, b) => a.pkg - b.pkg);
+  const placementMap = {};
+  const placementLabels = ["W", "R", "3", "4"];
+  sorted.forEach((s, rank) => { placementMap[lanes[s.idx]] = placementLabels[rank]; });
+
+  const CAT_NAMES = {STK:"STOCK ELIMINATOR",SS:"SUPER STOCK",SC:"SUPER COMP",SG:"SUPER GAS"};
+  const catCode = entries[0].category || "STK";
+  const category = CAT_NAMES[catCode] || catCode;
+
+  function make4Race(laneData, complete, placements) {
+    const race = {
+      category,
+      round: "E1",
+      left: { name: names[0], car_num: carNums[0], class_name: entries[0].class || "", member_num: cards[0]?.member_num || "", ...laneData[0] },
+      right: { name: names[1], car_num: carNums[1], class_name: entries[1].class || "", member_num: cards[1]?.member_num || "", ...laneData[1] },
+      lane3: { name: names[2], car_num: carNums[2], class_name: entries[2].class || "", member_num: cards[2]?.member_num || "", ...laneData[2] },
+      lane4: { name: names[3], car_num: carNums[3], class_name: entries[3].class || "", member_num: cards[3]?.member_num || "", ...laneData[3] },
+      winner: placements ? "4WIDE" : "",
+      placements: placements || {},
+      complete: complete || false,
+      timestamp: new Date().toISOString(),
+    };
+    return race;
+  }
+
+  const sleep = ms => new Promise(r => setTimeout(r, ms));
+
+  // Render driver cards for all 4 lanes
+  const laneData0 = lanes.map((_, i) => ({ dial_in: times[i].dial_in }));
+  const race0 = make4Race(laneData0, false, null);
+
+  // Render each driver card
+  for (let i = 0; i < 4; i++) {
+    renderDriverCard(lanes[i], race0, cards[i]);
+  }
+  updateTopBar(race0);
+  updateScoreboard(race0);
+
+  // Fake history for all 4 lanes
+  renderHistory("left", fakeRuns(dials[0], "left"));
+  renderHistory("right", fakeRuns(dials[1], "right"));
+  renderHistory("lane3", fakeRuns(dials[2], "lane3"));
+  renderHistory("lane4", fakeRuns(dials[3], "lane4"));
+
+  await sleep(3000);
+
+  // Step by step timing reveal
+  const fieldSteps = ["rt", "sixty", "three30", "six60", "six60_speed", "thousand"];
+  for (const field of fieldSteps) {
+    const ld = lanes.map((_, i) => {
+      const d = { dial_in: times[i].dial_in };
+      ["rt","sixty","three30","six60","six60_speed","thousand"].forEach(f => {
+        if (fieldSteps.indexOf(f) <= fieldSteps.indexOf(field)) d[f] = times[i][f];
+      });
+      return d;
+    });
+    updateScoreboard(make4Race(ld, false, null));
+    await sleep(1000);
+  }
+
+  // Final: ET + speed + winner + MOV
+  const winnerIdx = sorted[0].idx;
+  const mov = Math.abs(packages[sorted[0].idx] - packages[sorted[1].idx]).toFixed(3);
+  const finalData = lanes.map((_, i) => ({
+    dial_in: times[i].dial_in, rt: times[i].rt, sixty: times[i].sixty, three30: times[i].three30,
+    six60: times[i].six60, six60_speed: times[i].six60_speed, thousand: times[i].thousand,
+    et: times[i].et, speed: times[i].speed,
+    mov: i === winnerIdx ? mov : "\u2014",
+  }));
+  updateScoreboard(make4Race(finalData, true, placementMap));
+
+  await sleep(500);
+
+  testRunning = false;
+  btn.classList.remove("running");
+  btn.textContent = "\u{1F3C1} Test Run";
+}
+
+$("test-btn").addEventListener("click", runTestSimulation);
+$("test-2wide-btn").addEventListener("click", () => {
+  if (is4WideMode) exit4WideMode();
+  runTestSimulation();
+});
+$("test-4wide-btn").addEventListener("click", runTest4WideSimulation);
+</script>
+<script src="/auth.js"></script>
+</body>
+</html>

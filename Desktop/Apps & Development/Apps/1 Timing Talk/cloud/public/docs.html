@@ -1,0 +1,279 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>API Documentation - Timing Talk</title>
+  <link rel="stylesheet" href="/styles.css">
+</head>
+<body data-nav-utility="api">
+
+  <div class="page">
+    <div class="hero" style="padding:2rem 0;">
+      <h1 style="font-size:1.6rem;">API Documentation</h1>
+      <p>Everything you need to stream live timing data into your application.</p>
+    </div>
+
+    <!-- Quick Start -->
+    <h2>Quick Start</h2>
+    <div class="card">
+      <h3>1. Get an API Key</h3>
+      <p>Go to the <a href="/dashboard.html">Dashboard</a>, create an account, and generate an API key.</p>
+
+      <h3>2. Find a Track</h3>
+      <p>The track directory is public -- no key needed to browse:</p>
+      <pre><code>curl https://nhra-timing-api.web.app/api/tracks</code></pre>
+
+      <h3>3. Stream Data</h3>
+      <p>Use the JavaScript SDK or connect directly via SSE:</p>
+      <pre><code>&lt;script src="https://nhra-timing-api.web.app/timing-talk.js"&gt;&lt;/script&gt;
+&lt;script&gt;
+  const tt = new TimingTalk("tt_your_api_key");
+
+  // Stream live data from a track
+  tt.stream("DEVICE_ID", (data) =&gt; {
+    console.log(data.raw);       // raw serial string
+    console.log(data.timestamp); // ISO timestamp
+  });
+&lt;/script&gt;</code></pre>
+    </div>
+
+    <!-- Authentication -->
+    <h2>Authentication</h2>
+    <div class="card">
+      <p>There are two types of authentication depending on the endpoint:</p>
+
+      <table>
+        <thead><tr><th>Method</th><th>Used For</th><th>How</th></tr></thead>
+        <tbody>
+          <tr><td><span class="badge badge-public">Public</span></td><td>Track directory</td><td>No authentication needed</td></tr>
+          <tr><td><span class="badge badge-key">API Key</span></td><td>Streaming &amp; data access</td><td>Header: <code>X-API-Key: tt_...</code> or query param: <code>?key=tt_...</code></td></tr>
+          <tr><td><span class="badge badge-auth">Auth</span></td><td>Key management</td><td>Header: <code>Authorization: Bearer &lt;token&gt;</code></td></tr>
+        </tbody>
+      </table>
+    </div>
+
+    <!-- Endpoints: Public -->
+    <h2>Endpoints</h2>
+
+    <h3>Public (No Auth)</h3>
+    <div class="endpoint">
+      <span class="method method-get">GET</span>
+      <span class="endpoint-path">/api/tracks</span>
+      <div class="endpoint-desc">List all registered tracks. Supports <code>?q=name</code> search and <code>?online=true</code> filter.</div>
+    </div>
+    <div class="endpoint">
+      <span class="method method-get">GET</span>
+      <span class="endpoint-path">/api/tracks/:trackId</span>
+      <div class="endpoint-desc">Get details and live status of a specific track.</div>
+    </div>
+    <div class="endpoint">
+      <span class="method method-get">GET</span>
+      <span class="endpoint-path">/api/tracks/live</span>
+      <div class="endpoint-desc">List only tracks that are currently online.</div>
+    </div>
+
+    <h3>Requires API Key</h3>
+    <div class="endpoint">
+      <span class="method method-get">GET</span>
+      <span class="endpoint-path">/api/stream/:deviceId</span>
+      <div class="endpoint-desc">SSE live data stream. Add <code>?source=serial</code> or <code>?source=tcp</code> to filter by channel. Omit for both.</div>
+    </div>
+    <pre><code>// Stream serial data only
+const es = new EventSource(
+  "https://nhra-timing-api.web.app/api/stream/DEVICE_ID?key=tt_yourkey&amp;source=serial"
+);
+
+// Stream TCP/JSON data only
+const es2 = new EventSource(
+  "https://nhra-timing-api.web.app/api/stream/DEVICE_ID?key=tt_yourkey&amp;source=tcp"
+);
+
+// Stream both (default)
+const es3 = new EventSource(
+  "https://nhra-timing-api.web.app/api/stream/DEVICE_ID?key=tt_yourkey"
+);
+
+es.onmessage = (e) =&gt; {
+  const data = JSON.parse(e.data);
+  console.log(data.source, data.raw); // "serial" or "tcp"
+  if (data.parsed) console.log(data.parsed); // structured fields (TCP/JSON only)
+};</code></pre>
+
+    <div class="endpoint">
+      <span class="method method-get">GET</span>
+      <span class="endpoint-path">/api/latest/:deviceId</span>
+      <div class="endpoint-desc">Latest data snapshot. Add <code>?source=serial</code> or <code>?source=tcp</code>. Without filter, returns both channels.</div>
+    </div>
+    <pre><code># Get both channels
+curl -H "X-API-Key: tt_yourkey" \
+  https://nhra-timing-api.web.app/api/latest/DEVICE_ID
+# Returns: { "data": { "serial": {...}, "tcp": {...} }, ... }
+
+# Get serial only
+curl -H "X-API-Key: tt_yourkey" \
+  "https://nhra-timing-api.web.app/api/latest/DEVICE_ID?source=serial"
+# Returns: { "data": { "raw": "...", ... }, ... }</code></pre>
+
+    <div class="endpoint">
+      <span class="method method-get">GET</span>
+      <span class="endpoint-path">/api/history/:deviceId</span>
+      <div class="endpoint-desc">Historical readings. Supports <code>?limit=100</code> and <code>?after=ISO_TIMESTAMP</code> for pagination.</div>
+    </div>
+
+    <h3>Key Management (Firebase Auth)</h3>
+    <div class="endpoint">
+      <span class="method method-post">POST</span>
+      <span class="endpoint-path">/api/keys</span>
+      <div class="endpoint-desc">Generate a new API key. Body: <code>{ "label": "My Key" }</code></div>
+    </div>
+    <div class="endpoint">
+      <span class="method method-get">GET</span>
+      <span class="endpoint-path">/api/keys</span>
+      <div class="endpoint-desc">List all your API keys.</div>
+    </div>
+    <div class="endpoint">
+      <span class="method method-delete">DELETE</span>
+      <span class="endpoint-path">/api/keys/:keyId</span>
+      <div class="endpoint-desc">Delete an API key.</div>
+    </div>
+
+    <!-- SDK Reference -->
+    <h2>JavaScript SDK</h2>
+    <div class="card">
+      <p>Include the SDK from our CDN:</p>
+      <pre><code>&lt;script src="https://nhra-timing-api.web.app/timing-talk.js"&gt;&lt;/script&gt;</code></pre>
+
+      <table>
+        <thead><tr><th>Method</th><th>Description</th></tr></thead>
+        <tbody>
+          <tr><td><code>new TimingTalk(apiKey)</code></td><td>Create an SDK instance</td></tr>
+          <tr><td><code>getTracks()</code></td><td>List all tracks (public)</td></tr>
+          <tr><td><code>getLiveTracks()</code></td><td>List online tracks only (public)</td></tr>
+          <tr><td><code>getTrack(trackId)</code></td><td>Get track details (public)</td></tr>
+          <tr><td><code>stream(deviceId, callback, opts)</code></td><td>Open SSE stream. <code>opts: { source: "serial"|"tcp" }</code></td></tr>
+          <tr><td><code>stopStream()</code></td><td>Close the SSE stream</td></tr>
+          <tr><td><code>getLatest(deviceId, opts)</code></td><td>Fetch latest snapshot. <code>opts: { source: "serial"|"tcp" }</code></td></tr>
+          <tr><td><code>getHistory(deviceId, opts)</code></td><td>Fetch history with <code>{ limit, after }</code></td></tr>
+          <tr><td><code>poll(deviceId, callback, interval)</code></td><td>Poll latest data at an interval (ms)</td></tr>
+        </tbody>
+      </table>
+    </div>
+
+    <!-- Full Example -->
+    <h2>Full Example: Live Results Page</h2>
+    <pre><code>&lt;!DOCTYPE html&gt;
+&lt;html&gt;
+&lt;head&gt;
+  &lt;title&gt;Live Timing&lt;/title&gt;
+  &lt;style&gt;
+    body { font-family: monospace; background: #000; color: #0f0; padding: 2rem; }
+    #output { white-space: pre; font-size: 1.2rem; }
+    .status { color: #888; font-size: 0.9rem; }
+  &lt;/style&gt;
+&lt;/head&gt;
+&lt;body&gt;
+  &lt;div class="status" id="status"&gt;Connecting...&lt;/div&gt;
+  &lt;div id="output"&gt;&lt;/div&gt;
+
+  &lt;script src="https://nhra-timing-api.web.app/timing-talk.js"&gt;&lt;/script&gt;
+  &lt;script&gt;
+    const tt = new TimingTalk("tt_your_api_key");
+
+    tt.stream("DEVICE_ID", (data) =&gt; {
+      document.getElementById("status").textContent = "Connected - Live";
+      const line = document.createElement("div");
+      line.textContent = data.raw;
+      document.getElementById("output").prepend(line);
+    });
+  &lt;/script&gt;
+&lt;/body&gt;
+&lt;/html&gt;</code></pre>
+
+    <!-- cURL Examples -->
+    <h2>cURL Examples</h2>
+    <pre><code># List all tracks
+curl https://nhra-timing-api.web.app/api/tracks
+
+# Search tracks by name
+curl "https://nhra-timing-api.web.app/api/tracks?q=maple"
+
+# Get latest reading (API key required)
+curl -H "X-API-Key: tt_yourkey" \
+  https://nhra-timing-api.web.app/api/latest/DEVICE_ID
+
+# Get last 50 readings
+curl -H "X-API-Key: tt_yourkey" \
+  "https://nhra-timing-api.web.app/api/history/DEVICE_ID?limit=50"
+
+# Stream data via SSE
+curl -H "X-API-Key: tt_yourkey" -N \
+  https://nhra-timing-api.web.app/api/stream/DEVICE_ID</code></pre>
+
+    <!-- Data Sources -->
+    <h2>Data Sources</h2>
+    <div class="card">
+      <p>Each Pi accepts timing data from two inputs simultaneously:</p>
+      <table>
+        <thead><tr><th>Source</th><th>How</th><th>Format</th></tr></thead>
+        <tbody>
+          <tr><td><strong>USB Serial</strong></td><td>Plug a serial timing adapter into any USB port</td><td>Raw text lines (auto-detected baud rate)</td></tr>
+          <tr><td><strong>TCP/IP</strong></td><td>Connect to the Pi on port <code>4000</code></td><td>Newline-delimited JSON or plain text</td></tr>
+        </tbody>
+      </table>
+      <p>Both sources feed into the same pipeline: logged locally, synced to cloud, and streamed to API consumers.</p>
+
+      <h3>TCP/IP JSON Input</h3>
+      <p>When the timing system sends JSON over TCP, the API streams it with both <code>raw</code> and <code>parsed</code> fields:</p>
+      <pre><code>// Timing system sends over TCP:
+{"lane": 1, "et": "7.432", "speed": "186.21", "driver": "John Force"}
+
+// API streams to your app:
+{
+  "type": "data",
+  "raw": "{\"lane\":1,\"et\":\"7.432\",\"speed\":\"186.21\",\"driver\":\"John Force\"}",
+  "parsed": {
+    "lane": 1,
+    "et": "7.432",
+    "speed": "186.21",
+    "driver": "John Force"
+  },
+  "source_type": "tcp_json",
+  "source_port": "tcp:192.168.1.50:9100",
+  "timestamp": 1709123456789
+}</code></pre>
+
+      <h3>Sending Data via TCP</h3>
+      <pre><code># From any machine on the same network as the Pi:
+echo '{"lane":1,"et":"7.432","speed":"186.21"}' | nc PI_IP_ADDRESS 4000
+
+# Or from Python:
+import socket, json
+s = socket.socket()
+s.connect(("PI_IP_ADDRESS", 4000))
+s.send(json.dumps({"lane": 1, "et": "7.432"}).encode() + b"\n")
+s.close()</code></pre>
+    </div>
+
+    <!-- Rate Limits -->
+    <h2>Rate Limits &amp; Notes</h2>
+    <div class="card">
+      <p><strong>SSE Streams:</strong> One connection per API key per device. Reconnects automatically with the SDK.</p>
+      <p><strong>Polling:</strong> Recommended minimum interval of 2 seconds for <code>/latest</code>.</p>
+      <p><strong>History:</strong> Maximum 1000 records per request.</p>
+      <p><strong>CORS:</strong> All endpoints support cross-origin requests from any domain.</p>
+    </div>
+
+    <div class="card" style="text-align:center; margin-top:2rem;">
+      <p style="margin:0;">Ready to get started?</p>
+      <a href="/dashboard.html" class="btn btn-primary btn-large mt-1">Get Your API Key</a>
+    </div>
+  </div>
+
+  <div class="footer">Timing Talk &middot; NHRA Timing API</div>
+
+  <script src="/shell.js"></script>
+  <script src="/auth.js"></script>
+  <script>initFirebase();</script>
+</body>
+</html>

@@ -1,0 +1,263 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Results — Timing Talk</title>
+<link rel="stylesheet" href="/styles.css">
+<style>
+.results-header{display:flex;align-items:center;gap:0.75rem;margin-bottom:1rem;flex-wrap:wrap;}
+.results-header select{background:#1a1a2e;color:#e8e8f0;border:1px solid #2a2a4a;border-radius:8px;padding:0.5rem 1rem;font-size:0.85rem;min-width:180px;}
+.results-meta{font-size:0.72rem;color:rgba(255,255,255,0.4);margin-left:auto;}
+.results-actions{display:flex;gap:0.5rem;}
+.results-actions button{background:rgba(255,255,255,0.06);border:1px solid rgba(255,255,255,0.1);color:rgba(255,255,255,0.6);padding:0.35rem 0.9rem;border-radius:6px;font-size:0.7rem;cursor:pointer;}
+.results-actions button:hover{background:rgba(255,255,255,0.1);}
+.res-wrap{background:linear-gradient(180deg,rgba(13,21,43,0.92),rgba(8,13,28,0.98));border:1px solid rgba(255,255,255,0.1);border-radius:16px;overflow:hidden;box-shadow:0 8px 24px rgba(0,0,0,0.3);}
+.res-wrap::before{content:'';display:block;height:2px;background:linear-gradient(90deg,#ff304f,#ffd166,#3357ff);}
+.res-scroll{max-height:calc(100vh - 220px);overflow:auto;scrollbar-width:thin;scrollbar-color:rgba(255,255,255,0.1) transparent;}
+.res-table{width:100%;border-collapse:collapse;font-size:0.65rem;}
+.res-table th{position:sticky;top:0;z-index:2;padding:0.4rem 0.25rem;font-size:0.48rem;font-weight:800;letter-spacing:0.12em;text-transform:uppercase;color:rgba(255,255,255,0.4);background:linear-gradient(180deg,rgba(12,19,40,0.98),rgba(10,16,34,0.95));border-bottom:1px solid rgba(255,255,255,0.1);white-space:nowrap;text-align:center;cursor:pointer;user-select:none;}
+.res-table th:hover{color:rgba(255,255,255,0.7);}
+.res-table td{padding:0.3rem 0.2rem;font-family:'SF Mono','Fira Code','Consolas',monospace;font-weight:600;text-align:center;border-bottom:1px solid rgba(255,255,255,0.04);white-space:nowrap;}
+.res-table tr:hover{background:rgba(255,255,255,0.03);}
+.res-table tr.winner-row{background:rgba(255,209,102,0.08);}
+.res-table tr.winner-row:hover{background:rgba(255,209,102,0.12);}
+.win-badge{display:inline-block;background:linear-gradient(180deg,#ffd166,#ffe066);color:#1a1400;font-size:0.5rem;font-weight:900;padding:0.12rem 0.3rem;border-radius:4px;letter-spacing:0.06em;}
+.place-badge{display:inline-block;font-size:0.5rem;font-weight:900;padding:0.12rem 0.3rem;border-radius:4px;letter-spacing:0.06em;}
+.place-badge.place-w{background:linear-gradient(180deg,#ffd166,#ffe066);color:#1a1400;}
+.place-badge.place-ru{background:#3357ff;color:#fff;}
+.place-badge.place-3{background:#555;color:#fff;}
+.place-badge.place-4{background:#333;color:#fff;}
+.td-name{max-width:100px;overflow:hidden;text-overflow:ellipsis;font-family:'Oswald','Impact',sans-serif !important;text-align:left !important;}
+.td-et{color:#e8e8f0;font-weight:800;font-size:0.82rem;}
+.td-dial{color:#ffd166;}
+.td-class{font-size:0.55rem;color:rgba(255,255,255,0.4);font-weight:500;}
+.td-ts{font-size:0.52rem;color:rgba(255,255,255,0.4);font-weight:500;white-space:nowrap;}
+.no-results{text-align:center;padding:3rem;color:rgba(255,255,255,0.3);font-size:1rem;}
+</style>
+</head>
+<body data-nav-primary="results">
+<div class="tt-shell-content" id="main-content">
+  <div class="page-header">
+    <h1>Results</h1>
+    <p class="page-subtitle">Race results by event</p>
+  </div>
+
+  <div class="results-header">
+    <span id="context-label" style="font-size:0.85rem;color:rgba(255,255,255,0.6);font-weight:600;"></span>
+    <span class="results-meta" id="race-count"></span>
+    <div class="results-actions">
+      <button onclick="exportCSV()">Export CSV</button>
+      <button onclick="refreshResults()">Refresh</button>
+    </div>
+  </div>
+
+  <div id="results-container"><div class="no-results">Select a device and event to view results</div></div>
+</div>
+
+<script src="/auth.js"></script>
+<script src="/shell.js"></script>
+<script>
+let currentDeviceId = localStorage.getItem("tt-selected-device") || "";
+let currentEventId = localStorage.getItem("tt-selected-event") || "";
+let currentRaces = [];
+
+function init() {
+  // Show context from Event Set page
+  const label = document.getElementById("context-label");
+  if (!currentDeviceId) {
+    label.innerHTML = 'No device selected. <a href="/event-set.html" style="color:#ffd166;">Go to Event Set</a>';
+    return;
+  }
+  if (currentEventId === "__all__") {
+    label.textContent = "Showing all runs";
+    loadAllRuns();
+  } else if (currentEventId) {
+    label.textContent = "Loading event results...";
+    loadResults();
+  } else {
+    label.innerHTML = 'No event selected. <a href="/event-set.html" style="color:#ffd166;">Go to Event Set</a>';
+  }
+}
+
+async function loadResults() {
+  if (!currentEventId) return;
+  try {
+    const res = await fetch("/api/events/" + encodeURIComponent(currentEventId) + "/results");
+    const data = await res.json();
+    currentRaces = data.races || data || [];
+    document.getElementById("race-count").textContent = currentRaces.length + " runs";
+    document.getElementById("context-label").textContent = (data.event_name || currentEventId) + (data.start_date ? " (" + data.start_date + " to " + data.end_date + ")" : "");
+    renderTable(currentRaces);
+  } catch(e) {
+    console.error("Failed to load results:", e);
+    document.getElementById("results-container").innerHTML = '<div class="no-results">Failed to load results</div>';
+  }
+}
+
+async function loadAllRuns() {
+  if (!currentDeviceId) return;
+  try {
+    const res = await fetch("/api/runs?device_id=" + encodeURIComponent(currentDeviceId) + "&limit=500");
+    const data = await res.json();
+    currentRaces = data.races || data || [];
+    document.getElementById("race-count").textContent = currentRaces.length + " runs";
+    renderTable(currentRaces);
+  } catch(e) {
+    console.error("Failed to load runs:", e);
+    document.getElementById("results-container").innerHTML = '<div class="no-results">Failed to load runs</div>';
+  }
+}
+
+async function loadCustomResults() {
+  if (!currentDeviceId) return;
+  const start = document.getElementById("dr-start").value;
+  const end = document.getElementById("dr-end").value;
+  if (!start || !end) { alert("Select both start and end dates"); return; }
+  try {
+    const res = await fetch("/api/runs?device_id=" + encodeURIComponent(currentDeviceId) + "&start_date=" + start + "&end_date=" + end + "&limit=500");
+    const data = await res.json();
+    currentRaces = data.races || data || [];
+    document.getElementById("race-count").textContent = currentRaces.length + " runs";
+    renderTable(currentRaces);
+  } catch(e) {
+    console.error("Failed to load custom results:", e);
+    document.getElementById("results-container").innerHTML = '<div class="no-results">Failed to load results</div>';
+  }
+}
+
+function refreshResults() {
+  if (currentEventId === "__all__") loadAllRuns();
+  else if (currentEventId === "__custom__") loadCustomResults();
+  else if (currentEventId) loadResults();
+}
+
+function esc(s) { const d = document.createElement("div"); d.textContent = s || ""; return d.innerHTML; }
+
+function is4Wide(race) {
+  return !!(race.lane3_name || race.lane4_name || race.lane3_rt || race.lane4_rt || race.lane3_et || race.lane4_et);
+}
+
+function placementBadge(race, side) {
+  if (!race.winner) return '';
+  const w = race.winner.toUpperCase();
+  if (is4Wide(race)) {
+    // 4-wide: winner field stores placement per lane like "lane1:W,lane2:R,lane3:3,lane4:4" or just the lane key
+    // Check if this side's result field indicates placement
+    const sideResult = (race[side + "_result"] || "").toUpperCase();
+    if (sideResult === "W") return '<span class="place-badge place-w">W</span>';
+    if (sideResult === "R") return '<span class="place-badge place-ru">R/U</span>';
+    if (sideResult === "3") return '<span class="place-badge place-3">3RD</span>';
+    if (sideResult === "4") return '<span class="place-badge place-4">4TH</span>';
+    // Fallback: check if winner field matches this side
+    if (w === side.toUpperCase()) return '<span class="place-badge place-w">W</span>';
+    return '';
+  }
+  // 2-wide: original logic
+  const sideMap = { left: "LEFT", right: "RIGHT" };
+  if (w === (sideMap[side] || side.toUpperCase())) return '<span class="win-badge">W</span>';
+  return '';
+}
+
+function renderTable(races) {
+  const el = document.getElementById("results-container");
+  if (!races.length) { el.innerHTML = '<div class="no-results">No results for this event</div>'; return; }
+
+  let html = '<div class="res-wrap"><div class="res-scroll"><table class="res-table">';
+  html += '<thead><tr><th>Time</th><th>Rnd</th><th>Car#</th><th>Driver</th><th>Class</th><th>R/T</th><th>60ft</th><th>330ft</th><th>660ft</th><th>660mph</th><th>1000ft</th><th>1000mph</th><th>E.T.</th><th>MPH</th><th>MOV</th><th>W</th><th>Lane</th><th>Dial</th></tr></thead><tbody>';
+
+  races.forEach(r => {
+    if (is4Wide(r)) {
+      // 4-wide: render 4 rows per race
+      const lanes = [
+        { side: "left", label: "L1" },
+        { side: "right", label: "L2" },
+        { side: "lane3", label: "L3" },
+        { side: "lane4", label: "L4" },
+      ];
+      lanes.forEach(l => {
+        const badge = placementBadge(r, l.side);
+        const isWin = badge.includes("place-w");
+        html += rRow(r, l.side, isWin, l.label, badge);
+      });
+    } else {
+      // 2-wide: original behavior
+      const lw = r.winner && r.winner.toUpperCase() === "LEFT";
+      const rw = r.winner && r.winner.toUpperCase() === "RIGHT";
+      html += rRow(r, "left", lw, "L");
+      html += rRow(r, "right", rw, "R");
+    }
+  });
+
+  html += '</tbody></table></div></div>';
+  el.innerHTML = html;
+}
+
+function rRow(race, side, isWin, lane, badgeHtml) {
+  const p = side + "_";
+  const cls = isWin ? ' class="winner-row"' : '';
+  const w = badgeHtml !== undefined ? badgeHtml : (isWin ? '<span class="win-badge">W</span>' : '');
+  let h = '<tr' + cls + '>';
+  h += '<td class="td-ts">' + esc(race.created_date || '') + ' ' + esc(race.timestamp) + '</td>';
+  h += '<td>' + esc(race.round) + '</td>';
+  h += '<td>' + esc(race[p+"car_num"]) + '</td>';
+  h += '<td class="td-name">' + (race[p+"name"] ? '<a href="/racer.html?name=' + encodeURIComponent(race[p+"name"]) + '" style="color:inherit;text-decoration:none;">' + esc(race[p+"name"]) + '</a>' : '') + '</td>';
+  h += '<td class="td-class">' + esc(race[p+"class"]) + '</td>';
+  h += '<td>' + esc(race[p+"rt"]) + '</td>';
+  h += '<td>' + esc(race[p+"sixty"]) + '</td>';
+  h += '<td>' + esc(race[p+"three30"]) + '</td>';
+  h += '<td>' + esc(race[p+"six60"]) + '</td>';
+  h += '<td>' + esc(race[p+"six60_speed"]) + '</td>';
+  h += '<td>' + esc(race[p+"thousand"]) + '</td>';
+  h += '<td>' + esc(race[p+"thousand_speed"]) + '</td>';
+  h += '<td class="td-et">' + esc(race[p+"et"]) + '</td>';
+  h += '<td>' + esc(race[p+"speed"]) + '</td>';
+  h += '<td class="td-dial">' + esc(race[p+"mov"]) + '</td>';
+  h += '<td style="text-align:center;">' + w + '</td>';
+  h += '<td>' + lane + '</td>';
+  h += '<td class="td-dial">' + esc(race[p+"dial"]) + '</td>';
+  h += '</tr>';
+  return h;
+}
+
+function exportCSV() {
+  if (!currentRaces.length) return;
+  const headers = ["Date","Time","Rnd","Car#","Driver","Class","R/T","60ft","330ft","660ft","660mph","1000ft","1000mph","E.T.","MPH","MOV","W","Lane","Dial"];
+  let csv = headers.join(",") + "\n";
+  currentRaces.forEach(r => {
+    const lanes = is4Wide(r)
+      ? [["left","L1"],["right","L2"],["lane3","L3"],["lane4","L4"]]
+      : [["left","L"],["right","R"]];
+    lanes.forEach(([side, lane]) => {
+      const p = side + "_";
+      let wLabel = "";
+      if (is4Wide(r)) {
+        const res = (r[p+"result"] || "").toUpperCase();
+        wLabel = res === "W" ? "W" : res === "R" ? "R/U" : res === "3" ? "3RD" : res === "4" ? "4TH" : "";
+      } else {
+        const isWin = r.winner && r.winner.toUpperCase() === side.toUpperCase();
+        wLabel = isWin ? "W" : "";
+      }
+      const row = [
+        r.created_date || "", r.timestamp, r.round, r[p+"car_num"], '"'+((r[p+"name"]||"").replace(/"/g,'""'))+'"',
+        r[p+"class"], r[p+"rt"], r[p+"sixty"], r[p+"three30"],
+        r[p+"six60"], r[p+"six60_speed"], r[p+"thousand"], r[p+"thousand_speed"],
+        r[p+"et"], r[p+"speed"], r[p+"mov"], wLabel, lane, r[p+"dial"]
+      ];
+      csv += row.join(",") + "\n";
+    });
+  });
+  const blob = new Blob([csv], {type:"text/csv"});
+  const a = document.createElement("a");
+  a.href = URL.createObjectURL(blob);
+  a.download = (currentEventId || "results") + ".csv";
+  a.click();
+}
+
+// Auto-refresh every 30s
+setInterval(() => { if (currentEventId) refreshResults(); }, 30000);
+
+init();
+</script>
+</body>
+</html>

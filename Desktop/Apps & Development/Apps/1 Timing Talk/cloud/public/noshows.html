@@ -1,0 +1,219 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>No Shows — Timing Talk</title>
+<link rel="stylesheet" href="/styles.css">
+<style>
+.ns-controls{display:flex;align-items:center;gap:0.75rem;margin-bottom:1rem;flex-wrap:wrap;}
+.ns-controls button{background:linear-gradient(135deg,#c8102e,#003da5);border:none;color:#fff;padding:0.55rem 1.4rem;border-radius:8px;font-size:0.85rem;font-weight:700;cursor:pointer;transition:opacity 0.18s;}
+.ns-controls button:hover{opacity:0.85;}
+.ns-meta{font-size:0.72rem;color:rgba(255,255,255,0.4);margin-left:auto;}
+.cat-group{margin-bottom:1.5rem;}
+.cat-header{display:flex;align-items:center;gap:0.6rem;padding:0.65rem 1rem;background:linear-gradient(90deg,rgba(200,16,46,0.12),transparent);border-left:3px solid #c8102e;border-radius:0 8px 8px 0;margin-bottom:0.5rem;}
+.cat-header h3{font-size:0.9rem;font-weight:800;color:#e2e8f0;letter-spacing:-0.01em;}
+.cat-badge{background:rgba(234,179,8,0.18);color:#eab308;font-size:0.65rem;font-weight:800;padding:0.15rem 0.5rem;border-radius:99px;}
+.ns-wrap{background:linear-gradient(180deg,rgba(13,21,43,0.92),rgba(8,13,28,0.98));border:1px solid rgba(255,255,255,0.1);border-radius:16px;overflow:hidden;box-shadow:0 8px 24px rgba(0,0,0,0.3);}
+.ns-wrap::before{content:'';display:block;height:2px;background:linear-gradient(90deg,#ff304f,#ffd166,#3357ff);}
+.ns-scroll{max-height:60vh;overflow:auto;scrollbar-width:thin;scrollbar-color:rgba(255,255,255,0.1) transparent;}
+.ns-table{width:100%;border-collapse:collapse;font-size:0.75rem;}
+.ns-table th{position:sticky;top:0;z-index:2;padding:0.5rem 0.6rem;font-size:0.55rem;font-weight:800;letter-spacing:0.12em;text-transform:uppercase;color:rgba(255,255,255,0.4);background:linear-gradient(180deg,rgba(12,19,40,0.98),rgba(10,16,34,0.95));border-bottom:1px solid rgba(255,255,255,0.1);text-align:left;}
+.ns-table td{padding:0.45rem 0.6rem;border-bottom:1px solid rgba(255,255,255,0.04);font-weight:600;}
+.ns-table tr:hover{background:rgba(255,255,255,0.03);}
+.ns-row{background:rgba(234,179,8,0.06);}
+.ns-row:hover{background:rgba(234,179,8,0.12) !important;}
+.ns-badge{display:inline-block;background:linear-gradient(180deg,#eab308,#f59e0b);color:#1a1400;font-size:0.55rem;font-weight:900;padding:0.12rem 0.4rem;border-radius:4px;letter-spacing:0.04em;}
+.td-name{font-family:'Oswald','Impact',sans-serif;max-width:160px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+.no-results{text-align:center;padding:3rem;color:rgba(255,255,255,0.3);font-size:1rem;}
+</style>
+</head>
+<body data-nav-utility="noshows">
+<div class="tt-shell-content" id="main-content">
+  <div class="page-header">
+    <h1>No Shows</h1>
+    <p class="page-subtitle">Winners who didn't advance to the next round</p>
+  </div>
+
+  <div class="ns-controls">
+    <span id="context-label" style="font-size:0.85rem;color:rgba(255,255,255,0.6);font-weight:600;"></span>
+    <span class="ns-meta" id="ns-count"></span>
+    <button onclick="searchNoShows()">Search No Shows</button>
+  </div>
+
+  <div id="ns-container"><div class="no-results">Click "Search No Shows" to analyze results</div></div>
+</div>
+
+<script src="/auth.js"></script>
+<script src="/shell.js"></script>
+<script>
+const deviceId = localStorage.getItem("tt-selected-device") || "";
+const eventId = localStorage.getItem("tt-selected-event") || "";
+let allRaces = [];
+
+function init() {
+  const label = document.getElementById("context-label");
+  if (!deviceId) {
+    label.innerHTML = 'No device selected. <a href="/event-set.html" style="color:#ffd166;">Go to Event Set</a>';
+    return;
+  }
+  if (!eventId || eventId === "__all__") {
+    label.textContent = eventId === "__all__" ? "All runs" : "";
+    if (!eventId) {
+      label.innerHTML = 'No event selected. <a href="/event-set.html" style="color:#ffd166;">Go to Event Set</a>';
+      return;
+    }
+  }
+  label.textContent = "Ready to search";
+  loadData();
+}
+
+async function loadData() {
+  try {
+    let res;
+    if (eventId === "__all__") {
+      res = await fetch("/api/runs?device_id=" + encodeURIComponent(deviceId) + "&limit=2000");
+    } else {
+      res = await fetch("/api/events/" + encodeURIComponent(eventId) + "/results");
+    }
+    const data = await res.json();
+    allRaces = data.races || data || [];
+    document.getElementById("context-label").textContent = allRaces.length + " runs loaded";
+  } catch(e) {
+    console.error("Failed to load:", e);
+    document.getElementById("ns-container").innerHTML = '<div class="no-results">Failed to load results</div>';
+  }
+}
+
+function esc(s) { const d = document.createElement("div"); d.textContent = s || ""; return d.innerHTML; }
+
+const ROUND_ORDER = ["Q","E1","E2","E3","E4","E5","Finals"];
+
+function normalizeRound(r) {
+  if (!r) return "";
+  const u = r.trim().toUpperCase();
+  if (u === "FINALS" || u === "FINAL" || u === "F") return "Finals";
+  if (u.startsWith("Q")) return "Q";
+  const m = u.match(/^E(\d+)$/);
+  if (m) return "E" + m[1];
+  if (u === "R1" || u === "ROUND 1" || u === "RD1" || u === "1") return "E1";
+  if (u === "R2" || u === "ROUND 2" || u === "RD2" || u === "2") return "E2";
+  if (u === "R3" || u === "ROUND 3" || u === "RD3" || u === "3") return "E3";
+  if (u === "R4" || u === "ROUND 4" || u === "RD4" || u === "4") return "E4";
+  if (u === "R5" || u === "ROUND 5" || u === "RD5" || u === "5") return "E5";
+  return r.trim();
+}
+
+function nextRound(rnd) {
+  const idx = ROUND_ORDER.indexOf(rnd);
+  if (idx < 0 || idx >= ROUND_ORDER.length - 1) return null;
+  return ROUND_ORDER[idx + 1];
+}
+
+function searchNoShows() {
+  if (!allRaces.length) {
+    document.getElementById("ns-container").innerHTML = '<div class="no-results">No race data loaded</div>';
+    return;
+  }
+
+  // Group races by category
+  const byCategory = {};
+  allRaces.forEach(r => {
+    const cat = r.category || "Unknown";
+    if (!byCategory[cat]) byCategory[cat] = [];
+    byCategory[cat].push(r);
+  });
+
+  const noShows = {};
+  let totalCount = 0;
+
+  Object.keys(byCategory).sort().forEach(cat => {
+    const races = byCategory[cat];
+
+    // Group by round within category
+    const byRound = {};
+    races.forEach(r => {
+      const nrnd = normalizeRound(r.round);
+      if (!byRound[nrnd]) byRound[nrnd] = [];
+      byRound[nrnd].push(r);
+    });
+
+    // Find winners per round
+    ROUND_ORDER.forEach(rnd => {
+      const next = nextRound(rnd);
+      if (!next || !byRound[rnd]) return;
+      if (!byRound[next]) return; // next round doesn't exist at all, skip
+
+      // Collect names that appear in the next round
+      const nextRoundNames = new Set();
+      (byRound[next] || []).forEach(r => {
+        if (r.left_name) nextRoundNames.add(r.left_name.trim().toUpperCase());
+        if (r.right_name) nextRoundNames.add(r.right_name.trim().toUpperCase());
+      });
+
+      // Find winners in current round
+      (byRound[rnd] || []).forEach(r => {
+        let winnerName = "";
+        let winnerCarNum = "";
+        if (r.winner && r.winner.toUpperCase() === "LEFT" && r.left_name) {
+          winnerName = r.left_name.trim();
+          winnerCarNum = r.left_car_num || "";
+        } else if (r.winner && r.winner.toUpperCase() === "RIGHT" && r.right_name) {
+          winnerName = r.right_name.trim();
+          winnerCarNum = r.right_car_num || "";
+        }
+        if (!winnerName) return;
+
+        if (!nextRoundNames.has(winnerName.toUpperCase())) {
+          if (!noShows[cat]) noShows[cat] = [];
+          noShows[cat].push({
+            name: winnerName,
+            carNum: winnerCarNum,
+            wonRound: rnd,
+            missingFrom: next
+          });
+          totalCount++;
+        }
+      });
+    });
+  });
+
+  document.getElementById("ns-count").textContent = totalCount + " no-show" + (totalCount !== 1 ? "s" : "");
+  renderNoShows(noShows);
+}
+
+function renderNoShows(noShows) {
+  const el = document.getElementById("ns-container");
+  const cats = Object.keys(noShows).sort();
+
+  if (!cats.length) {
+    el.innerHTML = '<div class="no-results">No no-shows found — all winners advanced</div>';
+    return;
+  }
+
+  let html = "";
+  cats.forEach(cat => {
+    const items = noShows[cat];
+    html += '<div class="cat-group">';
+    html += '<div class="cat-header"><h3>' + esc(cat) + '</h3><span class="cat-badge">' + items.length + '</span></div>';
+    html += '<div class="ns-wrap"><div class="ns-scroll"><table class="ns-table">';
+    html += '<thead><tr><th>Racer</th><th>Car #</th><th>Won Round</th><th>Missing From</th><th>Status</th></tr></thead><tbody>';
+    items.forEach(item => {
+      html += '<tr class="ns-row">';
+      html += '<td class="td-name">' + esc(item.name) + '</td>';
+      html += '<td>' + esc(item.carNum) + '</td>';
+      html += '<td>' + esc(item.wonRound) + '</td>';
+      html += '<td>' + esc(item.missingFrom) + '</td>';
+      html += '<td><span class="ns-badge">NO SHOW</span></td>';
+      html += '</tr>';
+    });
+    html += '</tbody></table></div></div></div>';
+  });
+
+  el.innerHTML = html;
+}
+
+init();
+</script>
+</body>
+</html>

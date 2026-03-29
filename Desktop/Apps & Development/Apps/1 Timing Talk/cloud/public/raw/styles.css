@@ -1,0 +1,289 @@
+:root {
+  --raw-surface: rgba(30, 30, 50, 0.95);
+  --raw-surface-strong: rgba(18, 18, 31, 0.92);
+  --raw-border: #2a2a44;
+  --raw-chip: rgba(0, 61, 165, 0.14);
+}
+
+.raw-hero {
+  padding-top: 1rem;
+  padding-bottom: 1rem;
+}
+
+.raw-page {
+  padding-top: 0.25rem;
+}
+
+.raw-toolbar {
+  margin-bottom: 1rem;
+}
+
+.raw-toolbar-grid {
+  display: grid;
+  grid-template-columns: 1.15fr 1fr;
+  gap: 1rem;
+}
+
+.raw-device-summary {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.75rem;
+  margin-top: 1rem;
+}
+
+.raw-chip {
+  padding: 0.45rem 0.75rem;
+  border-radius: 999px;
+  background: var(--raw-chip);
+  border: 1px solid var(--raw-border);
+  color: var(--text-dim);
+  font-size: 0.82rem;
+}
+
+.raw-chip strong {
+  color: var(--text);
+}
+
+.raw-tab-row {
+  display: flex;
+  gap: 0.5rem;
+  flex-wrap: wrap;
+  margin-bottom: 1rem;
+}
+
+.raw-tab.active {
+  background: var(--accent);
+  color: #fff;
+  border-color: var(--accent);
+}
+
+.raw-view.hidden {
+  display: none;
+}
+
+.raw-stack {
+  display: grid;
+  gap: 1rem;
+}
+
+.raw-grid-2 {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 1rem;
+}
+
+.raw-grid-3 {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 1rem;
+}
+
+.raw-kpis {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 0.75rem;
+}
+
+.raw-kpi {
+  background: var(--raw-surface);
+  border: 1px solid var(--raw-border);
+  border-radius: 10px;
+  padding: 1rem;
+}
+
+.raw-kpi-label {
+  color: var(--text-dim);
+  font-size: 0.8rem;
+  margin-bottom: 0.2rem;
+}
+
+.raw-kpi-value {
+  color: var(--text);
+  font-size: 1.25rem;
+  font-weight: 700;
+}
+
+.raw-filter-grid {
+  display: grid;
+  grid-template-columns: 1.2fr repeat(3, minmax(0, 0.8fr)) auto;
+  gap: 0.75rem;
+  align-items: end;
+}
+
+.raw-section-title {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 1rem;
+  margin-bottom: 0.75rem;
+}
+
+.raw-section-title h2,
+.raw-section-title h3 {
+  margin: 0;
+  border: 0;
+  padding: 0;
+}
+
+.raw-meta {
+  color: var(--text-dim);
+  font-size: 0.85rem;
+}
+
+.raw-empty {
+  padding: 1rem;
+  border: 1px dashed var(--raw-border);
+  border-radius: 10px;
+  color: var(--text-dim);
+  background: var(--raw-surface-strong);
+}
+
+.raw-table-card {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  overflow: hidden;
+}
+
+.raw-table-card table {
+  margin-bottom: 0;
+}
+
+.raw-table-card tbody tr:hover {
+  background: rgba(200, 16, 46, 0.05);
+}
+
+.raw-mono {
+  font-family: "SF Mono", "Fira Code", Consolas, monospace;
+  font-size: 0.82rem;
+}
+
+.raw-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.3rem;
+  padding: 0.2rem 0.55rem;
+  border-radius: 999px;
+  font-size: 0.75rem;
+  font-weight: 700;
+}
+
+.raw-badge.live {
+  background: rgba(20, 83, 45, 0.8);
+  color: #86efac;
+}
+
+.raw-badge.offline {
+  background: rgba(127, 29, 29, 0.8);
+  color: #fda4af;
+}
+
+.raw-badge.winner {
+  background: rgba(20, 83, 45, 0.8);
+  color: #86efac;
+}
+
+.raw-timeslip-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 1rem;
+}
+
+.raw-timeslip {
+  background: linear-gradient(180deg, #f8fafc 0%, #e2e8f0 100%);
+  color: #0f172a;
+  border-radius: 12px;
+  padding: 1rem;
+  border: 1px solid #cbd5e1;
+}
+
+.raw-timeslip h3,
+.raw-timeslip h4,
+.raw-timeslip p {
+  color: #0f172a;
+}
+
+.raw-timeslip-header {
+  display: flex;
+  justify-content: space-between;
+  gap: 1rem;
+  margin-bottom: 0.75rem;
+}
+
+.raw-timeslip-title {
+  font-weight: 800;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+.raw-timeslip-grid table td,
+.raw-timeslip-grid table th {
+  border-color: #cbd5e1;
+  color: #0f172a;
+}
+
+.raw-search-row {
+  display: grid;
+  grid-template-columns: 1fr auto auto;
+  gap: 0.75rem;
+  align-items: end;
+}
+
+.raw-schedule-list,
+.raw-simple-list {
+  display: grid;
+  gap: 0.75rem;
+}
+
+.raw-schedule-item,
+.raw-simple-item {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  padding: 1rem;
+}
+
+.raw-schedule-item-top {
+  display: flex;
+  justify-content: space-between;
+  gap: 1rem;
+  margin-bottom: 0.5rem;
+}
+
+.raw-schedule-title {
+  font-size: 1rem;
+  font-weight: 700;
+  color: var(--text);
+}
+
+.raw-schedule-subtitle {
+  color: var(--text-dim);
+  font-size: 0.85rem;
+}
+
+.raw-inline-stats {
+  display: flex;
+  gap: 0.5rem;
+  flex-wrap: wrap;
+}
+
+.raw-inline-stats span {
+  background: var(--raw-chip);
+  border: 1px solid var(--raw-border);
+  border-radius: 999px;
+  padding: 0.3rem 0.6rem;
+  color: var(--text-dim);
+  font-size: 0.78rem;
+}
+
+@media (max-width: 900px) {
+  .raw-toolbar-grid,
+  .raw-grid-2,
+  .raw-grid-3,
+  .raw-kpis,
+  .raw-filter-grid,
+  .raw-timeslip-grid,
+  .raw-search-row {
+    grid-template-columns: 1fr;
+  }
+}

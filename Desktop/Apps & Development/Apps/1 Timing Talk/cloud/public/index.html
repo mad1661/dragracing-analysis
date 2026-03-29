@@ -1,0 +1,84 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Timing Talk - Live Drag Racing Timing Data API</title>
+  <meta http-equiv="refresh" content="0;url=/event-set.html">
+  <link rel="stylesheet" href="/styles.css">
+</head>
+<body data-nav-utility="home">
+
+  <div class="hero">
+    <h1>Live Timing Data. Any Track. Any App.</h1>
+    <p>Stream drag racing timing data from 150+ tracks directly into your website, app, or scoreboard with a single API key.</p>
+    <div class="btn-row" style="justify-content:center; margin-top:1.25rem;">
+      <a href="/feed.html" class="btn btn-primary btn-large">Live Feed</a>
+      <a href="/results.html" class="btn btn-outline btn-large">Results</a>
+      <a href="/settings.html" class="btn btn-outline btn-large">Device Settings</a>
+    </div>
+  </div>
+
+  <div class="page">
+    <div class="feature-grid">
+      <div class="feature-card">
+        <div class="feature-icon">&#9889;</div>
+        <h3>Real-Time Streaming</h3>
+        <p>SSE-based live stream. Data arrives on your site the instant it leaves the track.</p>
+      </div>
+      <div class="feature-card">
+        <div class="feature-icon">&#127760;</div>
+        <h3>150+ Tracks</h3>
+        <p>Every connected track appears in a public directory. Pick the one you want and stream.</p>
+      </div>
+      <div class="feature-card">
+        <div class="feature-icon">&#128268;</div>
+        <h3>One API Key</h3>
+        <p>No SDKs to install, no accounts to create per-track. One key streams from any track.</p>
+      </div>
+      <div class="feature-card">
+        <div class="feature-icon">&#128187;</div>
+        <h3>Works Everywhere</h3>
+        <p>REST API + JavaScript SDK. Embed in any website, build mobile apps, or use our online tools.</p>
+      </div>
+    </div>
+
+    <h2>Three Lines of Code</h2>
+    <pre><code>&lt;script src="https://nhra-timing-api.web.app/timing-talk.js"&gt;&lt;/script&gt;
+&lt;script&gt;
+  const tt = new TimingTalk("tt_your_api_key");
+  tt.stream("DEVICE_ID", data =&gt; {
+    document.getElementById("timing").textContent = data.raw;
+  });
+&lt;/script&gt;</code></pre>
+
+    <h2>How It Works</h2>
+    <div class="card-grid">
+      <div class="card">
+        <h3>1. Track Installs a Pi</h3>
+        <p>Each track gets a small Raspberry Pi connected to their timing system. It reads serial data and streams it to the cloud. Plug in, name the track, connect to WiFi -- done.</p>
+      </div>
+      <div class="card">
+        <h3>2. Data Hits the Cloud</h3>
+        <p>Timing data streams to Firebase in real-time. If the internet drops, data is logged locally and synced when it comes back. Nothing is ever lost.</p>
+      </div>
+      <div class="card">
+        <h3>3. You Build With It</h3>
+        <p>Use our API, SDK, or online apps to show live timing on your website, build a scoreboard, create a mobile app, or anything else you can imagine.</p>
+      </div>
+    </div>
+
+    <h2>Already Use Serial Software?</h2>
+    <div class="card">
+      <p>If you have existing software that reads from a COM port, our <a href="/download.html">legacy desktop app</a> creates a virtual serial port on your computer and streams cloud data to it. Your software works exactly as before -- no changes needed.</p>
+      <a href="/download.html" class="btn btn-outline mt-1">Download Desktop App</a>
+    </div>
+  </div>
+
+  <div class="footer">Timing Talk &middot; NHRA Timing API</div>
+
+  <script src="/shell.js"></script>
+  <script src="/auth.js"></script>
+  <script>initFirebase();</script>
+</body>
+</html>

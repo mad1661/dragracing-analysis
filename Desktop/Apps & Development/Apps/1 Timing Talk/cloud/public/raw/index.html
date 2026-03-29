@@ -1,0 +1,52 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Timing Talk Raw Data</title>
+  <link rel="stylesheet" href="/styles.css">
+  <link rel="stylesheet" href="/raw/styles.css">
+</head>
+<body data-nav-primary="runs">
+
+  <div class="hero raw-hero">
+    <h1>Raw Timing Browser</h1>
+    <p>Pick the right device by track or promoter, then browse runs, timeslips, schedule sessions, and no-shows from parsed raw timing data.</p>
+  </div>
+
+  <div class="page page-wide raw-page">
+    <div class="card raw-toolbar">
+      <div class="raw-toolbar-grid">
+        <div>
+          <label for="deviceSearch">Find Device</label>
+          <input id="deviceSearch" type="text" placeholder="Search by track, promoter, race, or location">
+        </div>
+        <div>
+          <label for="deviceSelect">Device</label>
+          <select id="deviceSelect">
+            <option value="">Loading devices...</option>
+          </select>
+        </div>
+      </div>
+      <div class="raw-device-summary" id="deviceSummary"></div>
+    </div>
+
+    <div class="raw-tab-row" id="viewTabs">
+      <button class="btn btn-outline raw-tab active" data-view="runs">Runs</button>
+      <button class="btn btn-outline raw-tab" data-view="timeslip">Timeslips</button>
+      <button class="btn btn-outline raw-tab" data-view="schedule">Schedule</button>
+      <button class="btn btn-outline raw-tab" data-view="noshows">No Shows</button>
+    </div>
+
+    <section id="runsView" class="raw-view"></section>
+    <section id="timeslipView" class="raw-view hidden"></section>
+    <section id="scheduleView" class="raw-view hidden"></section>
+    <section id="noshowsView" class="raw-view hidden"></section>
+  </div>
+
+  <div class="footer">Timing Talk &middot; Raw Parser Views</div>
+
+  <script src="/shell.js"></script>
+  <script src="/raw/app.js"></script>
+</body>
+</html>

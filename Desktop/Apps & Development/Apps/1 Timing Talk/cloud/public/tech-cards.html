@@ -1,0 +1,541 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Tech Cards — Timing Talk</title>
+<link rel="stylesheet" href="/styles.css">
+<script src="https://cdn.sheetjs.com/xlsx-0.20.3/package/dist/xlsx.full.min.js"></script>
+<style>
+/* ─── Upload Zone ─────────────────────────────────────────────── */
+.upload-zone {
+  border: 2px dashed var(--border);
+  border-radius: 16px;
+  padding: 2.5rem 1.5rem;
+  text-align: center;
+  cursor: pointer;
+  transition: border-color 0.2s, background 0.2s;
+  background: rgba(10, 14, 26, 0.6);
+  margin-bottom: 1.5rem;
+}
+.upload-zone:hover,
+.upload-zone.drag-over {
+  border-color: var(--accent);
+  background: rgba(200, 16, 46, 0.06);
+}
+.upload-zone svg {
+  width: 48px; height: 48px; color: var(--text-muted); margin-bottom: 0.75rem;
+}
+.upload-zone p { color: var(--text-dim); margin: 0; }
+.upload-zone .upload-hint { font-size: 0.78rem; color: var(--text-muted); margin-top: 0.35rem; }
+
+/* ─── Preview ─────────────────────────────────────────────────── */
+.upload-preview {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 14px;
+  padding: 1.25rem;
+  margin-bottom: 1rem;
+}
+.upload-stats { display: flex; gap: 1.5rem; margin-bottom: 1rem; flex-wrap: wrap; }
+.upload-stat-val { font-size: 1.6rem; font-weight: 800; color: white; }
+.upload-stat-label { font-size: 0.75rem; color: var(--text-muted); }
+.preview-table { max-height: 240px; overflow: auto; }
+.preview-table table { font-size: 0.78rem; }
+.preview-table th { font-size: 0.68rem; white-space: nowrap; }
+.preview-table td { white-space: nowrap; }
+
+/* ─── Progress ────────────────────────────────────────────────── */
+.progress-bar-wrap {
+  height: 8px;
+  background: var(--surface2);
+  border-radius: 99px;
+  overflow: hidden;
+  margin: 0.75rem 0;
+}
+.progress-bar-fill {
+  height: 100%;
+  width: 0%;
+  background: linear-gradient(90deg, var(--accent), var(--accent-hover));
+  border-radius: 99px;
+  transition: width 0.3s;
+}
+
+/* ─── Browse ──────────────────────────────────────────────────── */
+.search-row {
+  display: flex; gap: 0.75rem; margin-bottom: 1rem; align-items: center; flex-wrap: wrap;
+}
+.search-row input { max-width: 350px; }
+.search-count { font-size: 0.78rem; color: var(--text-muted); }
+
+.tc-table { font-size: 0.82rem; }
+.tc-table th { font-size: 0.7rem; white-space: nowrap; text-transform: uppercase; letter-spacing: 0.06em; }
+.tc-table td { white-space: nowrap; }
+.tc-table tr { cursor: pointer; }
+.tc-table tr:hover { background: rgba(200,16,46,0.06); }
+
+.tc-detail {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  padding: 1rem 1.25rem;
+  margin: 0.25rem 0 0.75rem;
+  animation: fadeIn 0.15s ease;
+}
+@keyframes fadeIn { from { opacity: 0; transform: translateY(-4px); } to { opacity: 1; transform: none; } }
+.tc-detail-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); gap: 0.5rem; }
+.tc-detail-field label { font-size: 0.68rem; color: var(--text-muted); margin: 0; }
+.tc-detail-field span { display: block; color: var(--text); font-weight: 600; font-size: 0.88rem; }
+
+/* ─── Photo ──────────────────────────────────────────────────── */
+.tc-photo-thumb {
+  width: 36px; height: 36px; border-radius: 50%; object-fit: cover;
+  border: 2px solid var(--border); vertical-align: middle;
+}
+.tc-photo-placeholder {
+  width: 36px; height: 36px; border-radius: 50%; display: inline-flex;
+  align-items: center; justify-content: center; background: var(--surface2);
+  color: var(--text-muted); font-size: 0.65rem; vertical-align: middle;
+  border: 2px solid var(--border);
+}
+.tc-detail-photo {
+  width: 80px; height: 80px; border-radius: 50%; object-fit: cover;
+  border: 3px solid var(--border); margin-right: 1rem;
+}
+.tc-photo-edit {
+  display: flex; align-items: center; gap: 0.5rem; margin-top: 0.5rem;
+}
+.tc-photo-edit input {
+  flex: 1; font-size: 0.78rem; padding: 0.3rem 0.5rem;
+  background: var(--surface2); border: 1px solid var(--border);
+  border-radius: 6px; color: var(--text);
+}
+.tc-photo-edit button {
+  font-size: 0.72rem; padding: 0.3rem 0.65rem; border-radius: 6px;
+  background: var(--accent); color: white; border: none; cursor: pointer;
+  font-weight: 600;
+}
+.tc-photo-edit button:hover { background: var(--accent-hover); }
+.tc-photo-edit .save-ok { color: #22c55e; font-size: 0.75rem; font-weight: 600; }
+</style>
+</head>
+<body data-nav-utility="tech-cards">
+<div class="tt-shell-content" id="main-content">
+  <div class="page-header">
+    <h1>Tech Cards</h1>
+    <p class="page-subtitle">Import and browse Compulink tech card data</p>
+  </div>
+
+  <!-- ─── Upload Section ──────────────────────────────── -->
+  <div class="card" id="upload-section">
+    <h3>Import Tech Cards</h3>
+    <p style="font-size:0.84rem;">Upload a Compulink XLSX export to populate or update the tech cards database.</p>
+
+    <div class="upload-zone" id="upload-zone">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12"/></svg>
+      <p>Drop XLSX file here or click to browse</p>
+      <div class="upload-hint">Supports Compulink tech card exports</div>
+      <input type="file" id="file-input" accept=".xlsx,.xls,.csv" style="display:none;">
+    </div>
+
+    <div id="upload-preview" class="upload-preview hidden">
+      <div class="upload-stats">
+        <div><div class="upload-stat-val" id="preview-count">0</div><div class="upload-stat-label">Entries Found</div></div>
+        <div><div class="upload-stat-val" id="preview-cats">0</div><div class="upload-stat-label">Categories</div></div>
+        <div><div class="upload-stat-val" id="preview-file">—</div><div class="upload-stat-label">File</div></div>
+      </div>
+      <div class="preview-table">
+        <table><thead id="preview-thead"></thead><tbody id="preview-tbody"></tbody></table>
+      </div>
+      <div class="btn-row" style="margin-top:1rem;">
+        <button class="btn btn-primary" id="btn-upload">Upload to Database</button>
+        <button class="btn btn-outline" id="btn-clear">Clear</button>
+      </div>
+      <div class="progress-bar-wrap hidden" id="progress-wrap"><div class="progress-bar-fill" id="progress-fill"></div></div>
+      <div id="upload-result" class="mt-1"></div>
+    </div>
+  </div>
+
+  <!-- ─── Browse Section ──────────────────────────────── -->
+  <div class="card" style="margin-top:1.5rem;">
+    <h3>Browse Tech Cards</h3>
+    <div class="search-row">
+      <input type="text" id="search-input" placeholder="Search by name, car #, or member #...">
+      <button class="btn btn-outline btn-small" id="btn-search">Search</button>
+      <span class="search-count" id="search-count"></span>
+    </div>
+    <div class="table-scroll">
+      <table class="tc-table">
+        <thead>
+          <tr>
+            <th title="Internal ID">Member # <span style="font-size:0.55rem;color:var(--text-muted);font-weight:400;">(internal)</span></th>
+            <th>Photo</th><th>Car #</th><th>Name</th><th>Category</th><th>Class</th>
+            <th>City / State</th><th>Crew Chief</th><th>Engine</th><th>Body</th>
+          </tr>
+        </thead>
+        <tbody id="cards-tbody"></tbody>
+      </table>
+    </div>
+    <div id="no-results" class="hidden" style="text-align:center;padding:2rem;color:var(--text-muted);">No tech cards found. Import data above or adjust your search.</div>
+  </div>
+</div>
+
+<script src="/auth.js"></script>
+<script src="/shell.js"></script>
+<script>
+(async function() {
+  await initFirebase();
+
+  const API = "/api";
+  let parsedRows = [];
+  let fileName = "";
+
+  // ─── Column Mapping (Compulink XLSX) ───────────────
+  const COL = {
+    CAR_NUM: 1, FIRST: 2, LAST: 3, STREET: 4, CITY: 5, STATE: 6, ZIP: 7,
+    OCCUPATION: 8, LICENSE: 9, LICENSE_EXP: 10, HOME_DIV: 11,
+    OWNER: 12, CREW_CHIEF: 13, CATEGORY: 14, CLASS: 15,
+    ENGINE_MAKE: 16, ENGINE_YEAR: 17, BODY_TYPE: 18, BODY_YEAR: 19,
+    CUI_CC: 20, HP: 21, FACTORED_HP: 22, MEMBER_NUM: 23, MEMBER_EXP: 24,
+    LINE1: 26, LINE2: 27, LINE3: 28, LINE4: 29, LINE5: 30, LINE6: 31,
+  };
+
+  function cell(row, idx) { return String(row[idx] || "").trim(); }
+
+  function parseXLSX(data, name) {
+    const wb = XLSX.read(data, { type: "array" });
+    const ws = wb.Sheets[wb.SheetNames[0]];
+    const raw = XLSX.utils.sheet_to_json(ws, { header: 1, defval: "" });
+
+    // Skip header row(s) — first row with "Car Number" or "Member" in it
+    let startRow = 0;
+    for (let i = 0; i < Math.min(5, raw.length); i++) {
+      const joined = raw[i].join(" ").toLowerCase();
+      if (joined.includes("car number") || joined.includes("member") || joined.includes("first name")) {
+        startRow = i + 1;
+        break;
+      }
+    }
+
+    const rows = [];
+    for (let i = startRow; i < raw.length; i++) {
+      const r = raw[i];
+      const memberNum = cell(r, COL.MEMBER_NUM);
+      if (!memberNum) continue;
+
+      rows.push({
+        member_num: memberNum,
+        first_name: cell(r, COL.FIRST),
+        last_name: cell(r, COL.LAST),
+        car_number: cell(r, COL.CAR_NUM),
+        city: cell(r, COL.CITY) || cell(r, COL.STREET),
+        state: cell(r, COL.STATE),
+        occupation: cell(r, COL.OCCUPATION),
+        license_num: cell(r, COL.LICENSE),
+        license_expiry: cell(r, COL.LICENSE_EXP),
+        home_division: cell(r, COL.HOME_DIV),
+        member_expiry: cell(r, COL.MEMBER_EXP),
+        category: cell(r, COL.CATEGORY),
+        class: cell(r, COL.CLASS),
+        owner: cell(r, COL.OWNER),
+        crew_chief: cell(r, COL.CREW_CHIEF),
+        engine_make: cell(r, COL.ENGINE_MAKE),
+        engine_year: cell(r, COL.ENGINE_YEAR),
+        body_type: cell(r, COL.BODY_TYPE),
+        body_year: cell(r, COL.BODY_YEAR),
+        cui_cc: cell(r, COL.CUI_CC),
+        hp: cell(r, COL.HP),
+        factored_hp: cell(r, COL.FACTORED_HP),
+        line1: cell(r, COL.LINE1),
+        line2: cell(r, COL.LINE2),
+        line3: cell(r, COL.LINE3),
+        line4: cell(r, COL.LINE4),
+        line5: cell(r, COL.LINE5),
+        line6: cell(r, COL.LINE6),
+      });
+    }
+    return rows;
+  }
+
+  function showPreview(rows, name) {
+    parsedRows = rows;
+    fileName = name;
+    document.getElementById("upload-preview").classList.remove("hidden");
+    document.getElementById("preview-count").textContent = rows.length;
+    const cats = new Set(rows.map(r => r.category).filter(Boolean));
+    document.getElementById("preview-cats").textContent = cats.size;
+    document.getElementById("preview-file").textContent = name.length > 24 ? name.slice(0, 22) + "..." : name;
+    document.getElementById("preview-file").style.fontSize = "0.82rem";
+
+    const thead = document.getElementById("preview-thead");
+    thead.innerHTML = "<tr><th>Member #</th><th>Car #</th><th>Name</th><th>Category</th><th>Class</th><th>City</th><th>State</th></tr>";
+    const tbody = document.getElementById("preview-tbody");
+    const sample = rows.slice(0, 10);
+    tbody.innerHTML = sample.map(r => `<tr>
+      <td>${r.member_num}</td><td>${r.car_number}</td><td>${r.first_name} ${r.last_name}</td>
+      <td>${r.category}</td><td>${r.class}</td><td>${r.city}</td><td>${r.state}</td>
+    </tr>`).join("");
+    document.getElementById("upload-result").innerHTML = "";
+  }
+
+  // ─── File Handling ─────────────────────────────────
+  const zone = document.getElementById("upload-zone");
+  const fileInput = document.getElementById("file-input");
+
+  zone.addEventListener("click", () => fileInput.click());
+  zone.addEventListener("dragover", (e) => { e.preventDefault(); zone.classList.add("drag-over"); });
+  zone.addEventListener("dragleave", () => zone.classList.remove("drag-over"));
+  zone.addEventListener("drop", (e) => {
+    e.preventDefault();
+    zone.classList.remove("drag-over");
+    const file = e.dataTransfer.files[0];
+    if (file) handleFile(file);
+  });
+  fileInput.addEventListener("change", () => { if (fileInput.files[0]) handleFile(fileInput.files[0]); });
+
+  function handleFile(file) {
+    const reader = new FileReader();
+    reader.onload = (e) => {
+      try {
+        const rows = parseXLSX(new Uint8Array(e.target.result), file.name);
+        if (rows.length === 0) {
+          alert("No valid rows found. Check that this is a Compulink tech card export.");
+          return;
+        }
+        showPreview(rows, file.name);
+      } catch (err) {
+        alert("Error parsing file: " + err.message);
+      }
+    };
+    reader.readAsArrayBuffer(file);
+  }
+
+  // ─── Upload ────────────────────────────────────────
+  document.getElementById("btn-upload").addEventListener("click", async () => {
+    if (!parsedRows.length) return;
+    const btn = document.getElementById("btn-upload");
+    const progressWrap = document.getElementById("progress-wrap");
+    const progressFill = document.getElementById("progress-fill");
+    const resultEl = document.getElementById("upload-result");
+
+    btn.disabled = true;
+    progressWrap.classList.remove("hidden");
+    progressFill.style.width = "20%";
+    resultEl.innerHTML = "";
+
+    try {
+      const token = _currentUser ? await _currentUser.getIdToken() : null;
+      const headers = { "Content-Type": "application/json" };
+      if (token) headers["Authorization"] = "Bearer " + token;
+
+      progressFill.style.width = "50%";
+
+      const resp = await fetch(API + "/tech-cards/upload", {
+        method: "POST",
+        headers,
+        body: JSON.stringify({ rows: parsedRows, source_file: fileName }),
+      });
+
+      progressFill.style.width = "90%";
+
+      const data = await resp.json();
+      if (!resp.ok) throw new Error(data.error || "Upload failed");
+
+      progressFill.style.width = "100%";
+      resultEl.innerHTML = `<div class="alert alert-success">Upload complete: <strong>${data.created}</strong> new, <strong>${data.updated}</strong> updated (${data.total} total)</div>`;
+
+      // Refresh browse
+      loadCards("");
+    } catch (err) {
+      resultEl.innerHTML = `<div class="alert alert-error">${err.message}</div>`;
+    } finally {
+      btn.disabled = false;
+    }
+  });
+
+  document.getElementById("btn-clear").addEventListener("click", () => {
+    parsedRows = [];
+    fileName = "";
+    document.getElementById("upload-preview").classList.add("hidden");
+    fileInput.value = "";
+  });
+
+  // ─── Browse ────────────────────────────────────────
+  const searchInput = document.getElementById("search-input");
+  const btnSearch = document.getElementById("btn-search");
+
+  btnSearch.addEventListener("click", () => loadCards(searchInput.value));
+  searchInput.addEventListener("keydown", (e) => { if (e.key === "Enter") loadCards(searchInput.value); });
+
+  let expandedMember = null;
+
+  async function loadCards(query) {
+    const tbody = document.getElementById("cards-tbody");
+    const noResults = document.getElementById("no-results");
+    const countEl = document.getElementById("search-count");
+    tbody.innerHTML = '<tr><td colspan="10" style="text-align:center;padding:1.5rem;color:var(--text-muted);">Loading...</td></tr>';
+    noResults.classList.add("hidden");
+
+    try {
+      const params = new URLSearchParams();
+      if (query) params.set("q", query);
+      params.set("limit", "100");
+
+      const resp = await fetch(API + "/tech-cards?" + params.toString());
+      const data = await resp.json();
+      const cards = data.cards || [];
+
+      countEl.textContent = cards.length + " result" + (cards.length !== 1 ? "s" : "");
+
+      if (!cards.length) {
+        tbody.innerHTML = "";
+        noResults.classList.remove("hidden");
+        return;
+      }
+
+      // Flatten: one row per entry
+      const flat = [];
+      for (const c of cards) {
+        const entries = c.entries && c.entries.length ? c.entries : [{}];
+        for (const e of entries) {
+          flat.push({ ...c, _entry: e });
+        }
+      }
+
+      tbody.innerHTML = flat.map((c) => {
+        const e = c._entry;
+        const engine = [e.engine_make, e.engine_year, e.cui_cc ? e.cui_cc + "ci" : ""].filter(Boolean).join(" ");
+        const body = [e.body_type, e.body_year].filter(Boolean).join(" ");
+        const photoCell = c.photo_url
+          ? `<td><img src="${c.photo_url}" class="tc-photo-thumb" alt="" onerror="this.outerHTML='<span class=\\'tc-photo-placeholder\\'>—</span>'"></td>`
+          : `<td><span class="tc-photo-placeholder">—</span></td>`;
+        return `<tr data-member="${c.member_num}" onclick="toggleDetail('${c.member_num}')">
+          <td class="mono" style="color:var(--text-muted);font-size:0.72rem;">${c.member_num}</td>
+          ${photoCell}
+          <td style="color:#ffd166;font-weight:700;">${c.car_number}</td>
+          <td>${c.first_name} ${c.last_name}</td>
+          <td><span class="badge badge-new">${e.category || "—"}</span></td>
+          <td>${e.class || "—"}</td>
+          <td>${[c.city, c.state].filter(Boolean).join(", ") || "—"}</td>
+          <td>${e.crew_chief || "—"}</td>
+          <td>${engine || "—"}</td>
+          <td>${body || "—"}</td>
+        </tr><tr class="tc-detail-row hidden" id="detail-${c.member_num}"><td colspan="10"></td></tr>`;
+      }).join("");
+    } catch (err) {
+      tbody.innerHTML = `<tr><td colspan="10" class="alert alert-error">${err.message}</td></tr>`;
+    }
+  }
+
+  window.toggleDetail = async function(memberId) {
+    const row = document.getElementById("detail-" + memberId);
+    if (!row) return;
+
+    if (expandedMember === memberId) {
+      row.classList.add("hidden");
+      expandedMember = null;
+      return;
+    }
+
+    // Collapse previous
+    if (expandedMember) {
+      const prev = document.getElementById("detail-" + expandedMember);
+      if (prev) prev.classList.add("hidden");
+    }
+
+    expandedMember = memberId;
+    row.classList.remove("hidden");
+    const cell = row.querySelector("td");
+    cell.innerHTML = '<div style="padding:0.75rem;color:var(--text-muted);">Loading details...</div>';
+
+    try {
+      const resp = await fetch(API + "/tech-cards/" + memberId);
+      const c = await resp.json();
+
+      const entries = (c.entries || []).map((e) => `
+        <div style="margin-top:0.75rem;padding:0.75rem;background:var(--surface2);border-radius:10px;">
+          <div style="font-weight:700;color:white;margin-bottom:0.5rem;">
+            <span class="badge badge-new">${e.category || "—"}</span> ${e.class || ""}
+            <span style="float:right;color:#ffd166;">Car #${e.car_number || c.car_number}</span>
+          </div>
+          <div class="tc-detail-grid">
+            <div class="tc-detail-field"><label>Owner</label><span>${e.owner || "—"}</span></div>
+            <div class="tc-detail-field"><label>Crew Chief</label><span>${e.crew_chief || "—"}</span></div>
+            <div class="tc-detail-field"><label>Engine</label><span>${[e.engine_make, e.engine_year].filter(Boolean).join(" ") || "—"}</span></div>
+            <div class="tc-detail-field"><label>CUI/CC</label><span>${e.cui_cc || "—"}</span></div>
+            <div class="tc-detail-field"><label>HP</label><span>${e.hp || "—"}</span></div>
+            <div class="tc-detail-field"><label>Factored HP</label><span>${e.factored_hp || "—"}</span></div>
+            <div class="tc-detail-field"><label>Body</label><span>${[e.body_type, e.body_year].filter(Boolean).join(" ") || "—"}</span></div>
+          </div>
+        </div>
+      `).join("");
+
+      const photoHtml = c.photo_url
+        ? `<img src="${c.photo_url}" class="tc-detail-photo" alt="" onerror="this.style.display='none'">`
+        : "";
+
+      cell.innerHTML = `<div class="tc-detail">
+        <div style="display:flex;align-items:flex-start;">
+          ${photoHtml}
+          <div style="flex:1;">
+            <div class="tc-detail-grid">
+              <div class="tc-detail-field"><label>Member # <span style="font-size:0.55rem;color:var(--text-muted);">(internal)</span></label><span>${c.member_num}</span></div>
+              <div class="tc-detail-field"><label>Name</label><span>${c.first_name} ${c.last_name}</span></div>
+              <div class="tc-detail-field"><label>Location</label><span>${[c.city, c.state].filter(Boolean).join(", ") || "—"}</span></div>
+              <div class="tc-detail-field"><label>Occupation</label><span>${c.occupation || "—"}</span></div>
+              <div class="tc-detail-field"><label>License #</label><span>${c.license_num || "—"}</span></div>
+              <div class="tc-detail-field"><label>License Expiry</label><span>${c.license_expiry || "—"}</span></div>
+              <div class="tc-detail-field"><label>Home Division</label><span>${c.home_division || "—"}</span></div>
+              <div class="tc-detail-field"><label>Member Expiry</label><span>${c.member_expiry || "—"}</span></div>
+            </div>
+            <div class="tc-photo-edit">
+              <label style="font-size:0.72rem;color:var(--text-muted);white-space:nowrap;">Photo URL</label>
+              <input type="text" id="photo-url-${c.member_num}" value="${c.photo_url || ""}" placeholder="https://example.com/photo.jpg">
+              <button onclick="savePhotoUrl('${c.member_num}')">Save</button>
+              <span id="photo-save-status-${c.member_num}"></span>
+            </div>
+          </div>
+        </div>
+        <h4 style="margin-top:1rem;font-size:0.88rem;color:var(--text-dim);">Entries (${(c.entries||[]).length})</h4>
+        ${entries || '<p style="color:var(--text-muted);font-size:0.82rem;">No entries</p>'}
+        <div style="margin-top:0.75rem;">
+          <span style="font-size:0.72rem;color:var(--text-muted);">Last updated: ${c.updated_at || "—"} &middot; Source: ${c.source_file || "—"}</span>
+        </div>
+      </div>`;
+    } catch (err) {
+      cell.innerHTML = `<div class="alert alert-error">${err.message}</div>`;
+    }
+  };
+
+  window.savePhotoUrl = async function(memberId) {
+    const input = document.getElementById("photo-url-" + memberId);
+    const status = document.getElementById("photo-save-status-" + memberId);
+    if (!input) return;
+    const url = input.value.trim();
+    status.textContent = "Saving...";
+    status.style.color = "var(--text-muted)";
+    try {
+      const token = _currentUser ? await _currentUser.getIdToken() : null;
+      const headers = { "Content-Type": "application/json" };
+      if (token) headers["Authorization"] = "Bearer " + token;
+      const resp = await fetch(API + "/tech-cards/" + memberId, {
+        method: "PATCH",
+        headers,
+        body: JSON.stringify({ photo_url: url }),
+      });
+      if (!resp.ok) throw new Error("Save failed");
+      status.textContent = "Saved";
+      status.className = "save-ok";
+      setTimeout(() => { status.textContent = ""; }, 2000);
+    } catch (err) {
+      status.textContent = "Error";
+      status.style.color = "#ef4444";
+    }
+  };
+
+  // Initial load
+  loadCards("");
+})();
+</script>
+</body>
+</html>

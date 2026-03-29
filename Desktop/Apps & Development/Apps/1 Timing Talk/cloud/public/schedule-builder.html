@@ -1,0 +1,974 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Schedule Builder — Timing Talk</title>
+<link rel="stylesheet" href="/styles.css">
+<style>
+/* Schedule Builder Styles */
+.sb-header{display:flex;align-items:flex-start;justify-content:space-between;flex-wrap:wrap;gap:1rem;margin-bottom:1.25rem;}
+.sb-title{font-size:1.6rem;font-weight:900;font-family:'Oswald','Impact',sans-serif;color:#fff;margin:0;}
+.sb-subtitle{font-size:0.75rem;color:rgba(255,255,255,0.4);margin-top:0.15rem;}
+.sb-controls{display:flex;flex-wrap:wrap;gap:0.5rem;align-items:center;}
+.sb-controls label{font-size:0.7rem;color:rgba(255,255,255,0.45);font-weight:600;}
+.sb-input{padding:0.45rem 0.65rem;background:rgba(10,16,34,0.92);border:1px solid rgba(255,255,255,0.1);border-radius:8px;color:#fff;font-size:0.78rem;font-family:inherit;outline:none;transition:border-color 0.15s;}
+.sb-input:focus{border-color:rgba(255,209,102,0.5);}
+.sb-input-sm{width:6rem;}
+.sb-input-xs{width:4.5rem;}
+.sb-input-date{width:10rem;}
+
+/* Buttons */
+.sb-btn{padding:0.5rem 1rem;border-radius:8px;font-size:0.75rem;font-weight:700;cursor:pointer;border:none;transition:all 0.15s;display:inline-flex;align-items:center;gap:0.4rem;}
+.sb-btn-red{background:rgba(255,48,79,0.9);color:#fff;}
+.sb-btn-red:hover{background:rgba(255,48,79,1);}
+.sb-btn-green{background:rgba(34,197,94,0.85);color:#fff;}
+.sb-btn-green:hover{background:rgba(34,197,94,1);}
+.sb-btn-outline{background:rgba(10,16,34,0.7);color:rgba(255,255,255,0.6);border:1px solid rgba(255,255,255,0.1);}
+.sb-btn-outline:hover{color:#fff;border-color:rgba(255,209,102,0.4);}
+.sb-btn:disabled{opacity:0.5;cursor:default;}
+
+/* Saved day pills */
+.sb-day-pills{display:flex;flex-wrap:wrap;gap:0.4rem;margin-bottom:1rem;}
+.sb-day-pills span{font-size:0.65rem;color:rgba(255,255,255,0.4);align-self:center;margin-right:0.3rem;}
+.sb-day-pill{padding:0.3rem 0.7rem;border-radius:8px;font-size:0.68rem;font-weight:700;cursor:pointer;border:1px solid rgba(255,255,255,0.1);background:rgba(10,16,34,0.7);color:rgba(255,255,255,0.5);transition:all 0.15s;}
+.sb-day-pill:hover{background:rgba(255,255,255,0.06);color:rgba(255,255,255,0.8);}
+.sb-day-pill.active{background:rgba(255,48,79,0.15);border-color:rgba(255,48,79,0.5);color:#ff304f;}
+
+/* Action bar */
+.sb-actions{display:flex;flex-wrap:wrap;gap:0.5rem;margin-bottom:1.25rem;}
+
+/* Schedule Table */
+.sb-card{background:rgba(10,16,34,0.92);border:1px solid rgba(255,255,255,0.08);border-radius:14px;overflow:hidden;margin-bottom:1.25rem;}
+.sb-card::before{content:'';display:block;height:2px;background:linear-gradient(90deg,#ff304f,#ffd166,#3357ff);}
+.sb-scroll{overflow-x:auto;scrollbar-width:thin;scrollbar-color:rgba(255,255,255,0.1) transparent;}
+.sb-table{width:100%;border-collapse:collapse;font-size:0.72rem;min-width:900px;}
+.sb-table th{padding:0.5rem 0.4rem;font-size:0.5rem;font-weight:800;letter-spacing:0.1em;text-transform:uppercase;color:rgba(255,255,255,0.4);background:rgba(12,19,40,0.98);border-bottom:1px solid rgba(255,255,255,0.1);text-align:left;white-space:nowrap;}
+.sb-table td{padding:0.4rem 0.35rem;border-bottom:1px solid rgba(255,255,255,0.04);font-family:'SF Mono','Fira Code','Consolas',monospace;font-size:0.7rem;}
+.sb-table tr:hover{background:rgba(255,255,255,0.03);}
+.sb-table tr.sb-break{background:rgba(255,209,102,0.04);}
+.sb-table tr.sb-completed{background:rgba(34,197,94,0.04);}
+.sb-table tr.sb-dragging{opacity:0.5;}
+.sb-table .sb-grab{cursor:grab;color:rgba(255,255,255,0.2);font-size:0.85rem;text-align:center;user-select:none;}
+.sb-table .sb-grab:active{cursor:grabbing;}
+
+/* Editable inputs in table */
+.sb-cell-input{background:rgba(12,19,40,0.98);border:1px solid rgba(255,255,255,0.1);border-radius:4px;color:#fff;padding:0.2rem 0.35rem;font-size:0.68rem;font-family:'SF Mono','Fira Code','Consolas',monospace;outline:none;width:100%;}
+.sb-cell-input:focus{border-color:rgba(255,209,102,0.5);}
+.sb-cell-input.fixed-input{color:#ff8a00;text-align:center;width:5.5rem;}
+.sb-cell-select{background:rgba(12,19,40,0.98);border:1px solid rgba(255,255,255,0.1);border-radius:4px;color:#fff;padding:0.2rem 0.25rem;font-size:0.68rem;outline:none;}
+.sb-cell-num{width:3.5rem;text-align:right;}
+.sb-cell-bump{width:3rem;text-align:center;color:#ff8a00;}
+
+/* Projected times */
+.sb-proj{color:#5b8af5;white-space:nowrap;text-align:center;}
+.sb-actual{color:#22c55e;white-space:nowrap;text-align:center;}
+.sb-cat{font-family:'Oswald','Impact',sans-serif;font-weight:700;color:#e8e8f0;white-space:nowrap;}
+.sb-cat-break{color:#ffd166;}
+.sb-duration{color:#ffd166;font-weight:600;text-align:right;white-space:nowrap;}
+.sb-remove{cursor:pointer;color:rgba(255,255,255,0.25);transition:color 0.15s;background:none;border:none;padding:0.2rem;}
+.sb-remove:hover{color:#ff304f;}
+.sb-pairs{text-align:right;color:rgba(255,255,255,0.7);}
+.sb-quad-toggle{display:inline-flex;border:1px solid rgba(255,255,255,0.1);border-radius:4px;overflow:hidden;font-size:0.55rem;vertical-align:middle;margin-left:0.25rem;}
+.sb-quad-toggle button{padding:0.12rem 0.35rem;border:none;background:rgba(255,255,255,0.04);color:rgba(255,255,255,0.4);cursor:pointer;font-weight:700;font-size:0.55rem;transition:all 0.12s;}
+.sb-quad-toggle button.active{background:rgba(255,209,102,0.15);color:#ffd166;}
+.sb-quad-toggle button:hover:not(.active){background:rgba(255,255,255,0.08);}
+.sb-quad-badge{display:inline-block;background:rgba(51,87,255,0.15);color:#3357ff;font-size:0.5rem;font-weight:900;padding:0.1rem 0.3rem;border-radius:3px;letter-spacing:0.06em;margin-left:0.3rem;vertical-align:middle;}
+
+/* Summary footer */
+.sb-summary{background:rgba(10,16,34,0.92);border:1px solid rgba(255,255,255,0.08);border-radius:14px;padding:1rem;display:flex;flex-wrap:wrap;gap:2rem;align-items:center;}
+.sb-summary-item label{font-size:0.5rem;font-weight:800;letter-spacing:0.1em;text-transform:uppercase;color:rgba(255,255,255,0.4);display:block;}
+.sb-summary-item .val{font-size:1.3rem;font-weight:900;font-family:'Oswald','Impact',sans-serif;color:#fff;}
+.sb-summary-item .val.green{color:#22c55e;}
+.sb-summary-item .val.accent{color:#ffd166;}
+
+/* Class Picker Modal */
+.sb-overlay{position:fixed;inset:0;background:rgba(0,0,0,0.6);z-index:100;display:flex;align-items:center;justify-content:center;padding:1rem;}
+.sb-modal{background:#0d1528;border:1px solid rgba(255,255,255,0.12);border-radius:14px;width:100%;max-width:40rem;max-height:80vh;display:flex;flex-direction:column;}
+.sb-modal-head{padding:1rem;border-bottom:1px solid rgba(255,255,255,0.08);}
+.sb-modal-head h2{font-size:1rem;font-weight:800;color:#fff;margin:0 0 0.6rem 0;font-family:'Oswald','Impact',sans-serif;}
+.sb-modal-search{width:100%;padding:0.55rem 0.8rem;background:rgba(10,16,34,0.92);border:1px solid rgba(255,255,255,0.1);border-radius:8px;color:#fff;font-size:0.8rem;outline:none;}
+.sb-modal-search:focus{border-color:rgba(255,209,102,0.5);}
+.sb-modal-body{overflow-y:auto;flex:1;padding:0.4rem;}
+.sb-class-btn{width:100%;text-align:left;padding:0.65rem 0.8rem;border-radius:8px;border:none;background:transparent;cursor:pointer;display:flex;align-items:center;justify-content:space-between;transition:background 0.12s;color:#fff;}
+.sb-class-btn:hover{background:rgba(255,255,255,0.06);}
+.sb-class-name{font-weight:600;font-size:0.8rem;}
+.sb-class-code{color:rgba(255,255,255,0.35);font-size:0.65rem;margin-left:0.5rem;}
+.sb-class-hint{color:rgba(91,138,245,0.5);font-size:0.65rem;margin-left:0.5rem;}
+.sb-class-dur{color:rgba(255,255,255,0.35);font-size:0.68rem;font-family:'SF Mono','Fira Code','Consolas',monospace;}
+.sb-no-results{text-align:center;padding:2rem;color:rgba(255,255,255,0.3);font-size:0.8rem;}
+
+/* Empty state */
+.sb-empty{text-align:center;padding:3rem;color:rgba(255,255,255,0.3);font-size:0.85rem;}
+
+/* Responsive */
+@media(max-width:768px){
+  .sb-header{flex-direction:column;}
+  .sb-controls{width:100%;}
+  .sb-summary{gap:1rem;}
+}
+</style>
+</head>
+<body data-nav-primary="schedule-builder">
+<div class="tt-shell-content" id="main-content">
+  <div id="sb-app"></div>
+</div>
+<script src="/auth.js"></script>
+<script src="/shell.js"></script>
+<script>
+(function() {
+  "use strict";
+
+  // ── State ───────────────────────────────────────────────────────────────
+  var deviceId = localStorage.getItem("tt-selected-device") || "";
+  var entries = [];
+  var startTime = "9:00 AM";
+  var delayMinutes = 0;
+  var planDate = "";
+  var loading = false;
+  var saving = false;
+  var saved = false;
+  var showPicker = false;
+  var pickerSearch = "";
+  var savedDates = [];
+  var dragIdx = null;
+  var dragOverIdx = null;
+
+  // ── Helpers ─────────────────────────────────────────────────────────────
+  function uid() { return Math.random().toString(36).slice(2, 10); }
+
+  function esc(s) {
+    var d = document.createElement("div");
+    d.textContent = s || "";
+    return d.innerHTML;
+  }
+
+  var raceClasses = [];
+
+  async function loadClassesFromAPI() {
+    try {
+      var res = await fetch("/api/race-classes");
+      if (res.ok) {
+        var data = await res.json();
+        if (data.classes && data.classes.length) {
+          raceClasses = data.classes;
+          return;
+        }
+      }
+    } catch(e) { console.warn("API class load failed, using cache:", e); }
+    // Fallback to localStorage
+    try {
+      var raw = localStorage.getItem("tt-race-classes");
+      if (raw) { raceClasses = JSON.parse(raw); return; }
+    } catch(e) {}
+    raceClasses = [];
+  }
+
+  function parseTime(s) {
+    if (!s) return null;
+    var clean = s.trim().toUpperCase();
+    var match = clean.match(/^(\d{1,2}):?(\d{2})?\s*(AM|PM)?$/);
+    if (!match) return null;
+    var h = parseInt(match[1], 10);
+    var m = parseInt(match[2] || "0", 10);
+    var ampm = match[3];
+    if (ampm === "PM" && h < 12) h += 12;
+    if (ampm === "AM" && h === 12) h = 0;
+    return { h: h, m: m };
+  }
+
+  function hmToMinutes(h, m) { return h * 60 + m; }
+
+  function minutesToHM(totalMin) {
+    var n = ((Math.round(totalMin) % 1440) + 1440) % 1440;
+    return { h: Math.floor(n / 60), m: n % 60 };
+  }
+
+  function fmtTime(h, m) {
+    var ampm = h >= 12 ? "PM" : "AM";
+    var h12 = h === 0 ? 12 : h > 12 ? h - 12 : h;
+    return h12 + ":" + String(m).padStart(2, "0") + " " + ampm;
+  }
+
+  function fmtDurSec(sec) {
+    if (sec <= 0) return "\u2014";
+    var mins = Math.floor(sec / 60);
+    var s = Math.round(sec % 60);
+    if (mins >= 60) {
+      var hr = Math.floor(mins / 60);
+      var rm = mins % 60;
+      return rm > 0 ? hr + "h " + rm + "m" : hr + "h";
+    }
+    return mins + "m" + String(s).padStart(2, "0") + "s";
+  }
+
+  function calcGroups(cars, groupSize) {
+    groupSize = groupSize || 2;
+    return cars > 0 ? Math.ceil(cars / groupSize) : 1;
+  }
+
+  function normalizeRound(r) {
+    if (!r) return "";
+    var s = r.toUpperCase().trim();
+    if (s.startsWith("E")) return "R" + s.slice(1);
+    return s;
+  }
+
+  function nextRound(lastRound) {
+    var s = lastRound.toUpperCase().trim();
+    var type = s.charAt(0);
+    var num = parseInt(s.slice(1), 10) || 1;
+    if (type === "T" && num >= 4) return "Q1";
+    if (type === "Q" && num >= 4) return "R1";
+    return type + (num + 1);
+  }
+
+  function isFullFieldRound(round) {
+    var s = round.toUpperCase().trim();
+    return s.startsWith("Q") || s.startsWith("T");
+  }
+
+  function isFirstElim(round) {
+    return normalizeRound(round) === "R1";
+  }
+
+  function carsForNextRound(prevCars, prevRound, newRound, fieldSize) {
+    if (isFullFieldRound(newRound)) return prevCars;
+    if (isFirstElim(newRound)) {
+      if (fieldSize && fieldSize > 0) return fieldSize;
+      return prevCars;
+    }
+    var prevNorm = normalizeRound(prevRound);
+    var newNorm = normalizeRound(newRound);
+    if (prevNorm !== newNorm) return Math.ceil(prevCars / 2);
+    return prevCars;
+  }
+
+  function normalizeCategoryName(name) {
+    var n = (name || "").toUpperCase().trim().replace(/\s+/g, " ");
+    var aliases = { "STOCK ELIMINATOR": "STOCK", "LEGENDS NITRO FUNNY CAR": "LEGACY NITRO FUNNY CAR" };
+    return aliases[n] || n;
+  }
+
+  function prevRoundInfo(className) {
+    var norm = normalizeCategoryName(className);
+    for (var i = entries.length - 1; i >= 0; i--) {
+      var e = entries[i];
+      if (normalizeCategoryName(e.className) === norm && e.round && !e.isBreak) {
+        return { round: e.round, cars: e.cars || 0 };
+      }
+    }
+    return null;
+  }
+
+  function todayStr() {
+    var d = new Date();
+    var mm = String(d.getMonth() + 1).padStart(2, "0");
+    var dd = String(d.getDate()).padStart(2, "0");
+    return d.getFullYear() + "-" + mm + "-" + dd;
+  }
+
+  function fmtDateLabel(dateStr) {
+    if (!dateStr) return "Unknown";
+    var parts = dateStr.split("-");
+    if (parts.length !== 3) return dateStr;
+    var d = new Date(parseInt(parts[0], 10), parseInt(parts[1], 10) - 1, parseInt(parts[2], 10));
+    return d.toLocaleDateString("en-US", { weekday: "short", month: "short", day: "numeric" });
+  }
+
+  // ── Projected Times Calculation ─────────────────────────────────────────
+  function calcProjectedTimes() {
+    var start = parseTime(startTime);
+    if (!start) return [];
+    var times = [];
+    var curMin = hmToMinutes(start.h, start.m);
+    var delayApplied = false;
+
+    for (var i = 0; i < entries.length; i++) {
+      var entry = entries[i];
+      var startMin = curMin;
+      if (!delayApplied) {
+        startMin += delayMinutes;
+        delayApplied = true;
+      }
+      if (entry.fixedTime) {
+        var pinned = parseTime(entry.fixedTime);
+        if (pinned) {
+          var pinnedMin = hmToMinutes(pinned.h, pinned.m);
+          if (pinnedMin < curMin) {
+            // Overlap: fixed time is before current, keep it but add back overlap after
+            var overlapMin = curMin - pinnedMin;
+            startMin = pinnedMin;
+            var endMin = startMin + entry.plannedDurationSec / 60;
+            var startHM = minutesToHM(startMin);
+            var endHM = minutesToHM(endMin);
+            times.push({ startH: startHM.h, startM: startHM.m, endH: endHM.h, endM: endHM.m });
+            curMin = endMin + overlapMin;
+            continue;
+          }
+          startMin = pinnedMin;
+        }
+      }
+
+      var endMin2 = startMin + entry.plannedDurationSec / 60;
+      var s2 = minutesToHM(startMin);
+      var e2 = minutesToHM(endMin2);
+      times.push({ startH: s2.h, startM: s2.m, endH: e2.h, endM: e2.m });
+      curMin = endMin2;
+    }
+    return times;
+  }
+
+  // ── API ─────────────────────────────────────────────────────────────────
+  function apiBase() { return "/api/schedule-plans"; }
+
+  async function loadPlan() {
+    if (!deviceId || !planDate) return;
+    loading = true;
+    render();
+    try {
+      var res = await fetch(apiBase() + "/" + encodeURIComponent(planDate) + "?device_id=" + encodeURIComponent(deviceId));
+      var data = await res.json();
+      if (data.plan && data.plan.entries && data.plan.entries.length > 0) {
+        entries = data.plan.entries.map(function(e) {
+          return Object.assign({}, e, {
+            id: e.id || uid(),
+            fixedTime: e.fixedTime || "",
+            fieldSize: e.fieldSize || 0,
+            groupSize: e.groupSize || 2,
+            status: e.status || "pending"
+          });
+        });
+        startTime = data.plan.startTime || "9:00 AM";
+        delayMinutes = data.plan.delayMinutes || 0;
+      } else {
+        entries = [];
+        startTime = "9:00 AM";
+        delayMinutes = 0;
+      }
+      // Load all plan dates
+      await loadSavedDates();
+    } catch(err) {
+      console.error("Load plan error:", err);
+    }
+    loading = false;
+    render();
+  }
+
+  async function loadSavedDates() {
+    try {
+      var res = await fetch(apiBase() + "?device_id=" + encodeURIComponent(deviceId));
+      var data = await res.json();
+      var plans = data.plans || [];
+      var dates = [];
+      plans.forEach(function(p) {
+        if (p.date && p.entries && p.entries.length > 0 && dates.indexOf(p.date) === -1) {
+          dates.push(p.date);
+        }
+      });
+      savedDates = dates.sort();
+    } catch(err) {
+      console.error("Load saved dates error:", err);
+    }
+  }
+
+  async function savePlan() {
+    if (!deviceId || !planDate) return;
+    saving = true;
+    render();
+    try {
+      await fetch(apiBase(), {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          device_id: deviceId,
+          date: planDate,
+          startTime: startTime,
+          delayMinutes: delayMinutes,
+          entries: entries
+        })
+      });
+      saved = true;
+      render();
+      await loadSavedDates();
+      setTimeout(function() { saved = false; render(); }, 2000);
+    } catch(err) {
+      console.error("Save plan error:", err);
+    }
+    saving = false;
+    render();
+  }
+
+  async function deletePlan() {
+    if (!deviceId || !planDate) return;
+    if (!confirm("Delete plan for " + planDate + "?")) return;
+    try {
+      await fetch(apiBase() + "/" + encodeURIComponent(planDate) + "?device_id=" + encodeURIComponent(deviceId), { method: "DELETE" });
+      entries = [];
+      startTime = "9:00 AM";
+      delayMinutes = 0;
+      await loadSavedDates();
+      render();
+    } catch(err) {
+      console.error("Delete plan error:", err);
+    }
+  }
+
+  // ── Entry Mutations ─────────────────────────────────────────────────────
+  function addEntry(rc, isBreak) {
+    var prev = isBreak ? null : prevRoundInfo(rc.name);
+    var round = "T1";
+    var cars = 0;
+    var pairs = 0;
+    var fs = rc.fieldSize || 0;
+    var gs = 2;
+
+    if (prev) {
+      round = nextRound(prev.round);
+      cars = carsForNextRound(prev.cars, prev.round, round, fs);
+      pairs = calcGroups(cars, gs);
+    }
+
+    if (isBreak) {
+      round = "";
+      cars = 0;
+      pairs = 1;
+    }
+
+    entries.push({
+      id: uid(),
+      className: rc.name,
+      classCode: rc.code || "",
+      round: round,
+      cars: cars,
+      pairs: pairs,
+      perPairSec: rc.perPairSec,
+      plannedDurationSec: isBreak ? rc.perPairSec : (pairs > 0 ? pairs * rc.perPairSec : rc.perPairSec),
+      isBreak: isBreak,
+      fixedTime: "",
+      fieldSize: fs,
+      groupSize: gs,
+      status: "pending"
+    });
+    showPicker = false;
+    pickerSearch = "";
+    render();
+  }
+
+  function addBreak() {
+    entries.push({
+      id: uid(),
+      className: "Break",
+      classCode: "",
+      round: "",
+      cars: 0,
+      pairs: 1,
+      perPairSec: 600,
+      plannedDurationSec: 600,
+      isBreak: true,
+      fixedTime: "",
+      fieldSize: 0,
+      groupSize: 2,
+      status: "pending"
+    });
+    render();
+  }
+
+  function removeEntry(id) {
+    entries = entries.filter(function(e) { return e.id !== id; });
+    render();
+  }
+
+  function updateEntryField(id, field, value) {
+    for (var i = 0; i < entries.length; i++) {
+      if (entries[i].id !== id) continue;
+      var e = entries[i];
+      e[field] = value;
+
+      if (field === "groupSize") {
+        e.groupSize = value;
+        e.pairs = calcGroups(e.cars, e.groupSize);
+        e.plannedDurationSec = e.pairs * e.perPairSec;
+      }
+      if (field === "cars" && !e.isBreak) {
+        e.pairs = calcGroups(e.cars, e.groupSize || 2);
+        e.plannedDurationSec = e.pairs * e.perPairSec;
+      }
+      if (field === "pairs") {
+        e.plannedDurationSec = e.isBreak ? e.perPairSec * e.pairs : e.pairs * e.perPairSec;
+      }
+      if (field === "perPairSec") {
+        e.plannedDurationSec = e.isBreak ? e.perPairSec * (e.pairs || 1) : (e.pairs || 1) * e.perPairSec;
+      }
+      if (field === "round" && !e.isBreak) {
+        var pi = prevRoundInfo(e.className);
+        if (pi && e.cars === 0) {
+          var autoCars = carsForNextRound(pi.cars, pi.round, e.round, e.fieldSize);
+          e.cars = autoCars;
+          e.pairs = calcGroups(autoCars, e.groupSize || 2);
+          e.plannedDurationSec = e.pairs * e.perPairSec;
+        }
+      }
+      break;
+    }
+    render();
+  }
+
+  function moveEntry(fromIdx, toIdx) {
+    if (fromIdx < 0 || fromIdx >= entries.length || toIdx < 0 || toIdx >= entries.length) return;
+    var item = entries.splice(fromIdx, 1)[0];
+    entries.splice(toIdx, 0, item);
+    render();
+  }
+
+  function duplicateEntry(id) {
+    var idx = entries.findIndex(function(e) { return e.id === id; });
+    if (idx === -1) return;
+    var orig = entries[idx];
+    var copy = Object.assign({}, orig, { id: uid() });
+    // Auto-advance round
+    if (!copy.isBreak && copy.round) {
+      copy.round = nextRound(copy.round);
+      copy.cars = carsForNextRound(orig.cars, orig.round, copy.round, copy.fieldSize);
+      copy.pairs = calcGroups(copy.cars, copy.groupSize || 2);
+      copy.plannedDurationSec = copy.pairs * copy.perPairSec;
+    }
+    entries.splice(idx + 1, 0, copy);
+    render();
+  }
+
+  // ── Rendering ───────────────────────────────────────────────────────────
+  function render() {
+    var app = document.getElementById("sb-app");
+
+    if (!deviceId) {
+      app.innerHTML = '<div class="page-header"><h1>Schedule Builder</h1></div><div class="sb-empty">No device selected. <a href="/event-set.html">Go to Event Set</a> to select a device first.</div>';
+      return;
+    }
+
+    var projected = calcProjectedTimes();
+    var totalDurSec = 0;
+    entries.forEach(function(e) { totalDurSec += e.plannedDurationSec; });
+    var projEnd = projected.length > 0 ? projected[projected.length - 1] : null;
+
+    var html = '';
+
+    // Header
+    html += '<div class="sb-header">';
+    html += '<div>';
+    html += '<h1 class="sb-title">Schedule Builder</h1>';
+    html += '<p class="sb-subtitle">Plan the day\'s racing schedule in advance</p>';
+    html += '</div>';
+    html += '<div class="sb-controls">';
+    html += '<div style="display:flex;align-items:center;gap:0.35rem;">';
+    html += '<label>Date:</label>';
+    html += '<input type="date" class="sb-input sb-input-date" id="sb-date" value="' + esc(planDate) + '">';
+    html += '</div>';
+    html += '<div style="display:flex;align-items:center;gap:0.35rem;">';
+    html += '<label>Start:</label>';
+    html += '<input type="text" class="sb-input sb-input-sm" id="sb-start" value="' + esc(startTime) + '" placeholder="9:00 AM">';
+    html += '</div>';
+    html += '<div style="display:flex;align-items:center;gap:0.35rem;">';
+    html += '<label>Delay:</label>';
+    html += '<input type="number" min="0" step="5" class="sb-input sb-input-xs" id="sb-delay" value="' + delayMinutes + '">';
+    html += '<span style="font-size:0.65rem;color:rgba(255,255,255,0.35);">min</span>';
+    html += '</div>';
+    html += '<button class="sb-btn sb-btn-green" id="sb-save"' + (saving ? ' disabled' : '') + '>' + (saving ? 'Saving...' : (saved ? 'Saved!' : 'Save')) + '</button>';
+    html += '<button class="sb-btn sb-btn-outline" id="sb-delete" title="Delete this plan">&times; Delete</button>';
+    html += '</div>';
+    html += '</div>';
+
+    // Saved day pills
+    if (savedDates.length > 0) {
+      html += '<div class="sb-day-pills">';
+      html += '<span>Saved Days:</span>';
+      savedDates.forEach(function(d) {
+        var cls = d === planDate ? "sb-day-pill active" : "sb-day-pill";
+        html += '<div class="' + cls + '" data-day="' + esc(d) + '">' + esc(fmtDateLabel(d)) + '</div>';
+      });
+      html += '</div>';
+    }
+
+    // Action bar
+    html += '<div class="sb-actions">';
+    html += '<button class="sb-btn sb-btn-red" id="sb-add-class">+ Add Class</button>';
+    html += '<button class="sb-btn sb-btn-outline" id="sb-add-break">\u23f1 Add Break</button>';
+    html += '<button class="sb-btn sb-btn-outline" id="sb-refresh"' + (loading ? ' disabled' : '') + '>' + (loading ? 'Loading...' : 'Refresh') + '</button>';
+    html += '</div>';
+
+    // Table
+    html += '<div class="sb-card"><div class="sb-scroll">';
+    html += '<table class="sb-table">';
+    html += '<thead><tr>';
+    html += '<th style="width:2rem;text-align:center">#</th>';
+    html += '<th style="text-align:center;width:5.5rem">Fixed Time</th>';
+    html += '<th style="text-align:center" colspan="2"><span style="color:#5b8af5">Projected</span></th>';
+    html += '<th>Category</th>';
+    html += '<th style="text-align:center;width:4.5rem">Round</th>';
+    html += '<th style="text-align:right;width:4rem">Cars</th>';
+    html += '<th style="text-align:center;width:4rem">Mode</th>';
+    html += '<th style="text-align:center;width:3.5rem">Bump</th>';
+    html += '<th style="text-align:right;width:3rem">Groups</th>';
+    html += '<th style="text-align:right;width:5rem">Per Pair</th>';
+    html += '<th style="text-align:right;width:5rem">Duration</th>';
+    html += '<th style="width:6rem;text-align:center">Actions</th>';
+    html += '</tr>';
+    html += '<tr style="border-bottom:1px solid rgba(255,255,255,0.08);">';
+    html += '<th></th><th></th>';
+    html += '<th style="text-align:center;font-size:0.45rem;color:rgba(255,255,255,0.3)">Start</th>';
+    html += '<th style="text-align:center;font-size:0.45rem;color:rgba(255,255,255,0.3)">End</th>';
+    html += '<th colspan="9"></th>';
+    html += '</tr>';
+    html += '</thead><tbody>';
+
+    if (entries.length === 0) {
+      html += '<tr><td colspan="13" class="sb-empty">No entries yet. Click "Add Class" or "Add Break" to start building.</td></tr>';
+    }
+
+    entries.forEach(function(entry, idx) {
+      var pt = projected[idx];
+      var rowClass = entry.isBreak ? " sb-break" : "";
+
+      html += '<tr class="' + rowClass.trim() + '" draggable="true" data-idx="' + idx + '">';
+
+      // #
+      html += '<td style="text-align:center;color:rgba(255,255,255,0.3)">' + (idx + 1) + '</td>';
+
+      // Fixed Time
+      html += '<td style="text-align:center">';
+      html += '<input type="text" class="sb-cell-input fixed-input" data-id="' + esc(entry.id) + '" data-field="fixedTime" value="' + esc(entry.fixedTime || '') + '" placeholder="\u2014">';
+      html += '</td>';
+
+      // Projected Start/End
+      html += '<td class="sb-proj">' + (pt ? fmtTime(pt.startH, pt.startM) : '') + '</td>';
+      html += '<td class="sb-proj" style="opacity:0.65">' + (pt ? fmtTime(pt.endH, pt.endM) : '') + '</td>';
+
+      // Category
+      html += '<td class="sb-cat' + (entry.isBreak ? ' sb-cat-break' : '') + '">';
+      if (entry.isBreak) {
+        html += '<input type="text" class="sb-cell-input" data-id="' + esc(entry.id) + '" data-field="className" value="' + esc(entry.className) + '" style="color:#ffd166;font-family:Oswald,Impact,sans-serif;font-weight:700;background:transparent;border:1px solid transparent;width:auto;min-width:8rem;">';
+      } else {
+        html += esc(entry.className);
+      }
+      html += '</td>';
+
+      // Round
+      html += '<td style="text-align:center">';
+      if (!entry.isBreak) {
+        html += '<select class="sb-cell-select" data-id="' + esc(entry.id) + '" data-field="round">';
+        ["T1","T2","T3","T4","Q1","Q2","Q3","Q4","R1","R2","R3","R4","R5","R6","R7","E1","E2","E3","E4","E5","E6","E7","F"].forEach(function(r) {
+          html += '<option value="' + r + '"' + (entry.round === r ? ' selected' : '') + '>' + r + '</option>';
+        });
+        html += '</select>';
+      } else {
+        html += '<span style="color:rgba(255,255,255,0.3)">\u2014</span>';
+      }
+      html += '</td>';
+
+      // Cars
+      html += '<td style="text-align:right">';
+      if (!entry.isBreak) {
+        html += '<input type="number" min="0" class="sb-cell-input sb-cell-num" data-id="' + esc(entry.id) + '" data-field="cars" value="' + (entry.cars || '') + '" placeholder="0">';
+      } else {
+        html += '<span style="color:rgba(255,255,255,0.3)">\u2014</span>';
+      }
+      html += '</td>';
+
+      // Mode (Pair/Quad toggle)
+      html += '<td style="text-align:center">';
+      if (!entry.isBreak) {
+        var isQuad = (entry.groupSize || 2) === 4;
+        html += '<div class="sb-quad-toggle">';
+        html += '<button data-id="' + esc(entry.id) + '" data-gsval="2" class="sb-gs-btn' + (!isQuad ? ' active' : '') + '">2</button>';
+        html += '<button data-id="' + esc(entry.id) + '" data-gsval="4" class="sb-gs-btn' + (isQuad ? ' active' : '') + '">4</button>';
+        html += '</div>';
+        if (isQuad) html += '<span class="sb-quad-badge">QUAD</span>';
+      } else {
+        html += '<span style="color:rgba(255,255,255,0.3)">\u2014</span>';
+      }
+      html += '</td>';
+
+      // Bump / Field Size
+      html += '<td style="text-align:center">';
+      if (!entry.isBreak && entry.classCode) {
+        html += '<input type="number" min="0" class="sb-cell-input sb-cell-bump" data-id="' + esc(entry.id) + '" data-field="fieldSize" value="' + (entry.fieldSize || '') + '" placeholder="\u2014">';
+      } else {
+        html += '<span style="color:rgba(255,255,255,0.3)">\u2014</span>';
+      }
+      html += '</td>';
+
+      // Groups (was Pairs)
+      html += '<td class="sb-pairs">';
+      if (entry.isBreak) {
+        html += '<input type="number" min="1" class="sb-cell-input sb-cell-num" data-id="' + esc(entry.id) + '" data-field="pairs" value="' + (entry.pairs || 1) + '" style="width:3rem;">';
+      } else {
+        html += (entry.pairs || "\u2014");
+      }
+      html += '</td>';
+
+      // Per Pair
+      html += '<td style="text-align:right;color:rgba(255,255,255,0.5)">';
+      html += '<input type="number" min="0" class="sb-cell-input" data-id="' + esc(entry.id) + '" data-field="perPairSec" value="' + (entry.perPairSec || '') + '" style="width:4rem;text-align:right;color:rgba(255,255,255,0.5)" title="Seconds per pair">';
+      html += '</td>';
+
+      // Duration
+      html += '<td class="sb-duration">' + fmtDurSec(entry.plannedDurationSec) + '</td>';
+
+      // Actions
+      html += '<td style="text-align:center;white-space:nowrap;">';
+      html += '<button class="sb-remove" data-action="up" data-idx="' + idx + '" title="Move up" style="font-size:0.75rem;">\u25B2</button> ';
+      html += '<button class="sb-remove" data-action="down" data-idx="' + idx + '" title="Move down" style="font-size:0.75rem;">\u25BC</button> ';
+      html += '<button class="sb-remove" data-action="dup" data-id="' + esc(entry.id) + '" title="Duplicate + next round" style="font-size:0.7rem;">\u2398</button> ';
+      html += '<button class="sb-remove" data-action="remove" data-id="' + esc(entry.id) + '" title="Remove">\u2715</button>';
+      html += '</td>';
+
+      html += '</tr>';
+    });
+
+    html += '</tbody></table></div></div>';
+
+    // Summary
+    if (entries.length > 0) {
+      html += '<div class="sb-summary">';
+      html += '<div class="sb-summary-item"><label>Total Entries</label><div class="val">' + entries.length + '</div></div>';
+      html += '<div class="sb-summary-item"><label>Total Duration</label><div class="val accent">' + fmtDurSec(totalDurSec) + '</div></div>';
+      html += '<div class="sb-summary-item"><label>Projected End</label><div class="val">' + (projEnd ? fmtTime(projEnd.endH, projEnd.endM) : '\u2014') + '</div></div>';
+      var totalPairs = 0;
+      entries.forEach(function(e) { if (!e.isBreak) totalPairs += (e.pairs || 0); });
+      html += '<div class="sb-summary-item"><label>Total Groups</label><div class="val">' + totalPairs + '</div></div>';
+      html += '</div>';
+    }
+
+    app.innerHTML = html;
+
+    // Class Picker Modal (rendered separately)
+    renderPicker();
+    bindEvents();
+  }
+
+  function renderPicker() {
+    var existing = document.getElementById("sb-picker-overlay");
+    if (existing) existing.remove();
+    if (!showPicker) return;
+
+    var search = pickerSearch.toLowerCase();
+    var filtered = raceClasses;
+    if (search) {
+      filtered = raceClasses.filter(function(rc) {
+        return (rc.name || "").toLowerCase().indexOf(search) !== -1 ||
+               (rc.code || "").toLowerCase().indexOf(search) !== -1;
+      });
+    }
+
+    var html = '<div class="sb-overlay" id="sb-picker-overlay">';
+    html += '<div class="sb-modal" onclick="event.stopPropagation()">';
+    html += '<div class="sb-modal-head">';
+    html += '<h2>Add Class to Schedule</h2>';
+    html += '<input type="text" class="sb-modal-search" id="sb-picker-search" placeholder="Search classes..." value="' + esc(pickerSearch) + '" autofocus>';
+    html += '</div>';
+    html += '<div class="sb-modal-body">';
+
+    if (filtered.length === 0) {
+      html += '<div class="sb-no-results">No classes match your search.</div>';
+    }
+
+    filtered.forEach(function(rc) {
+      var origIdx = raceClasses.indexOf(rc);
+      var prev = rc.isRacing ? prevRoundInfo(rc.name) : null;
+      var nr = prev ? nextRound(prev.round) : "T1";
+      var bumpLabel = rc.fieldSize ? " \u00b7 Bump: " + rc.fieldSize : "";
+      var hint = prev ? "Next: " + nr + " (" + prev.cars + " cars" + bumpLabel + ")" : (rc.fieldSize ? "Bump: " + rc.fieldSize : "");
+      var durLabel = rc.isRacing ? fmtDurSec(rc.perPairSec) + "/pair" : fmtDurSec(rc.perPairSec);
+
+      html += '<button class="sb-class-btn" data-class-idx="' + origIdx + '" data-is-break="' + (!rc.isRacing) + '">';
+      html += '<div>';
+      html += '<span class="sb-class-name">' + esc(rc.name) + '</span>';
+      if (rc.code) html += '<span class="sb-class-code">[' + esc(rc.code) + ']</span>';
+      if (hint) html += '<span class="sb-class-hint">' + esc(hint) + '</span>';
+      html += '</div>';
+      html += '<span class="sb-class-dur">' + esc(durLabel) + '</span>';
+      html += '</button>';
+    });
+
+    html += '</div></div></div>';
+
+    document.body.insertAdjacentHTML("beforeend", html);
+
+    // Overlay close
+    document.getElementById("sb-picker-overlay").addEventListener("click", function(ev) {
+      if (ev.target === this) { showPicker = false; pickerSearch = ""; renderPicker(); }
+    });
+
+    // Search
+    var searchInput = document.getElementById("sb-picker-search");
+    if (searchInput) {
+      searchInput.focus();
+      searchInput.addEventListener("input", function() {
+        pickerSearch = this.value;
+        renderPicker();
+      });
+    }
+
+    // Class buttons
+    document.querySelectorAll(".sb-class-btn").forEach(function(btn) {
+      btn.addEventListener("click", function() {
+        var idx = parseInt(this.getAttribute("data-class-idx"), 10);
+        var isBreak = this.getAttribute("data-is-break") === "true";
+        var rc = raceClasses[idx];
+        if (rc) addEntry(rc, isBreak);
+      });
+    });
+  }
+
+  // ── Event Binding ───────────────────────────────────────────────────────
+  function bindEvents() {
+    // Date
+    var dateInput = document.getElementById("sb-date");
+    if (dateInput) dateInput.addEventListener("change", function() {
+      planDate = this.value;
+      updateUrlDate();
+      loadPlan();
+    });
+
+    // Start time
+    var startInput = document.getElementById("sb-start");
+    if (startInput) startInput.addEventListener("change", function() {
+      startTime = this.value;
+      render();
+    });
+
+    // Delay
+    var delayInput = document.getElementById("sb-delay");
+    if (delayInput) delayInput.addEventListener("change", function() {
+      delayMinutes = Math.max(0, parseInt(this.value, 10) || 0);
+      render();
+    });
+
+    // Save
+    var saveBtn = document.getElementById("sb-save");
+    if (saveBtn) saveBtn.addEventListener("click", savePlan);
+
+    // Delete
+    var deleteBtn = document.getElementById("sb-delete");
+    if (deleteBtn) deleteBtn.addEventListener("click", deletePlan);
+
+    // Add class
+    var addClassBtn = document.getElementById("sb-add-class");
+    if (addClassBtn) addClassBtn.addEventListener("click", function() {
+      showPicker = true;
+      renderPicker();
+    });
+
+    // Add break
+    var addBreakBtn = document.getElementById("sb-add-break");
+    if (addBreakBtn) addBreakBtn.addEventListener("click", addBreak);
+
+    // Refresh
+    var refreshBtn = document.getElementById("sb-refresh");
+    if (refreshBtn) refreshBtn.addEventListener("click", loadPlan);
+
+    // Day pills
+    document.querySelectorAll(".sb-day-pill").forEach(function(pill) {
+      pill.addEventListener("click", function() {
+        planDate = this.getAttribute("data-day");
+        updateUrlDate();
+        loadPlan();
+      });
+    });
+
+    // Inline cell edits
+    document.querySelectorAll(".sb-cell-input, .sb-cell-select").forEach(function(input) {
+      var id = input.getAttribute("data-id");
+      var field = input.getAttribute("data-field");
+      if (!id || !field) return;
+      input.addEventListener("change", function() {
+        var val = this.value;
+        if (field === "cars" || field === "pairs" || field === "fieldSize" || field === "perPairSec") {
+          val = parseInt(val, 10) || 0;
+        }
+        updateEntryField(id, field, val);
+      });
+    });
+
+    // Group size (pair/quad) toggle buttons
+    document.querySelectorAll(".sb-gs-btn").forEach(function(btn) {
+      btn.addEventListener("click", function() {
+        var id = this.getAttribute("data-id");
+        var gsVal = parseInt(this.getAttribute("data-gsval"), 10);
+        updateEntryField(id, "groupSize", gsVal);
+      });
+    });
+
+    // Action buttons (move, dup, remove)
+    document.querySelectorAll("[data-action]").forEach(function(btn) {
+      btn.addEventListener("click", function(ev) {
+        ev.stopPropagation();
+        var action = this.getAttribute("data-action");
+        if (action === "remove") removeEntry(this.getAttribute("data-id"));
+        else if (action === "dup") duplicateEntry(this.getAttribute("data-id"));
+        else if (action === "up") { var i = parseInt(this.getAttribute("data-idx"), 10); if (i > 0) moveEntry(i, i - 1); }
+        else if (action === "down") { var i2 = parseInt(this.getAttribute("data-idx"), 10); if (i2 < entries.length - 1) moveEntry(i2, i2 + 1); }
+      });
+    });
+
+    // Drag and drop
+    document.querySelectorAll(".sb-table tbody tr[draggable]").forEach(function(row) {
+      row.addEventListener("dragstart", function() {
+        dragIdx = parseInt(this.getAttribute("data-idx"), 10);
+        this.classList.add("sb-dragging");
+      });
+      row.addEventListener("dragend", function() {
+        this.classList.remove("sb-dragging");
+        dragIdx = null;
+        dragOverIdx = null;
+      });
+      row.addEventListener("dragover", function(ev) {
+        ev.preventDefault();
+        dragOverIdx = parseInt(this.getAttribute("data-idx"), 10);
+      });
+      row.addEventListener("drop", function(ev) {
+        ev.preventDefault();
+        if (dragIdx !== null && dragOverIdx !== null && dragIdx !== dragOverIdx) {
+          moveEntry(dragIdx, dragOverIdx);
+        }
+        dragIdx = null;
+        dragOverIdx = null;
+      });
+    });
+  }
+
+  // ── URL Management ──────────────────────────────────────────────────────
+  function getDateFromUrl() {
+    var params = new URLSearchParams(window.location.search);
+    return params.get("date") || "";
+  }
+
+  function updateUrlDate() {
+    if (!planDate) return;
+    var url = new URL(window.location.href);
+    url.searchParams.set("date", planDate);
+    window.history.replaceState({}, "", url.toString());
+  }
+
+  // ── Init ────────────────────────────────────────────────────────────────
+  async function init() {
+    // Get date from URL or default to today
+    planDate = getDateFromUrl() || todayStr();
+    updateUrlDate();
+
+    // Load race classes from API (with localStorage fallback)
+    await loadClassesFromAPI();
+
+    if (!deviceId) {
+      render();
+      return;
+    }
+
+    loadPlan();
+  }
+
+  init();
+})();
+</script>
+</body>
+</html>

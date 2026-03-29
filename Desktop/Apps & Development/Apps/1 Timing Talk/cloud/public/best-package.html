@@ -1,0 +1,423 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Best Losing Package — Timing Talk</title>
+<link rel="stylesheet" href="/styles.css">
+<style>
+.bp-controls{display:flex;flex-direction:column;gap:0.75rem;margin-bottom:1rem;}
+.bp-row{display:flex;align-items:center;gap:0.75rem;flex-wrap:wrap;}
+.bp-label{font-size:0.75rem;font-weight:700;color:rgba(255,255,255,0.5);text-transform:uppercase;letter-spacing:0.08em;min-width:80px;}
+.bp-checks{display:flex;flex-wrap:wrap;gap:0.4rem 0.8rem;}
+.bp-checks label{display:flex;align-items:center;gap:0.35rem;font-size:0.8rem;color:rgba(255,255,255,0.7);cursor:pointer;}
+.bp-checks input[type="checkbox"]{accent-color:#c8102e;width:14px;height:14px;}
+.bp-btn{background:linear-gradient(135deg,#c8102e,#003da5);border:none;color:#fff;padding:0.55rem 1.4rem;border-radius:8px;font-size:0.85rem;font-weight:700;cursor:pointer;transition:opacity 0.18s;align-self:flex-start;}
+.bp-btn:hover{opacity:0.85;}
+.bp-btn-copy{background:linear-gradient(135deg,#2d6a4f,#40916c);border:none;color:#fff;padding:0.55rem 1.4rem;border-radius:8px;font-size:0.85rem;font-weight:700;cursor:pointer;transition:opacity 0.18s;align-self:flex-start;}
+.bp-btn-copy:hover{opacity:0.85;}
+.bp-meta{font-size:0.72rem;color:rgba(255,255,255,0.4);margin-left:auto;}
+.cat-group{margin-bottom:1.5rem;}
+.cat-header{display:flex;align-items:center;gap:0.6rem;padding:0.65rem 1rem;background:linear-gradient(90deg,rgba(200,16,46,0.12),transparent);border-left:3px solid #c8102e;border-radius:0 8px 8px 0;margin-bottom:0.5rem;}
+.cat-header h3{font-size:0.9rem;font-weight:800;color:#e2e8f0;}
+.cat-badge{background:rgba(234,179,8,0.18);color:#eab308;font-size:0.65rem;font-weight:800;padding:0.15rem 0.5rem;border-radius:99px;}
+.bp-wrap{background:linear-gradient(180deg,rgba(13,21,43,0.92),rgba(8,13,28,0.98));border:1px solid rgba(255,255,255,0.1);border-radius:16px;overflow:hidden;box-shadow:0 8px 24px rgba(0,0,0,0.3);}
+.bp-wrap::before{content:'';display:block;height:2px;background:linear-gradient(90deg,#ff304f,#ffd166,#3357ff);}
+.bp-scroll{max-height:60vh;overflow:auto;scrollbar-width:thin;scrollbar-color:rgba(255,255,255,0.1) transparent;}
+.bp-table{width:100%;border-collapse:collapse;font-size:0.75rem;}
+.bp-table th{position:sticky;top:0;z-index:2;padding:0.5rem 0.6rem;font-size:0.55rem;font-weight:800;letter-spacing:0.12em;text-transform:uppercase;color:rgba(255,255,255,0.4);background:linear-gradient(180deg,rgba(12,19,40,0.98),rgba(10,16,34,0.95));border-bottom:1px solid rgba(255,255,255,0.1);text-align:center;}
+.bp-table th:first-child,.bp-table td:first-child{text-align:center;width:50px;}
+.bp-table td{padding:0.45rem 0.6rem;border-bottom:1px solid rgba(255,255,255,0.04);font-weight:600;text-align:center;font-family:'SF Mono','Fira Code','Consolas',monospace;}
+.bp-table tr:hover{background:rgba(255,255,255,0.03);}
+.td-name{font-family:'Oswald','Impact',sans-serif !important;text-align:left !important;max-width:160px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+.rank-gold{background:linear-gradient(180deg,#ffd700,#ffec80);color:#1a1400;font-size:0.6rem;font-weight:900;padding:0.15rem 0.45rem;border-radius:4px;display:inline-block;}
+.rank-silver{background:linear-gradient(180deg,#c0c0c0,#e0e0e0);color:#1a1a1a;font-size:0.6rem;font-weight:900;padding:0.15rem 0.45rem;border-radius:4px;display:inline-block;}
+.rank-bronze{background:linear-gradient(180deg,#cd7f32,#dea064);color:#1a1400;font-size:0.6rem;font-weight:900;padding:0.15rem 0.45rem;border-radius:4px;display:inline-block;}
+.rank-num{font-size:0.7rem;color:rgba(255,255,255,0.4);font-weight:700;}
+.td-pkg{color:#ffd166;font-weight:800;font-size:0.85rem;}
+.no-results{text-align:center;padding:3rem;color:rgba(255,255,255,0.3);font-size:1rem;}
+
+/* Winners section */
+.winners-section{margin-bottom:1.5rem;}
+.winners-section h2{font-size:1rem;font-weight:800;color:#e2e8f0;margin-bottom:0.75rem;display:flex;align-items:center;gap:0.5rem;}
+.winners-section h2::before{content:'';display:inline-block;width:4px;height:1.1em;background:linear-gradient(180deg,#ffd700,#ffab00);border-radius:2px;}
+.winners-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(220px,1fr));gap:0.75rem;}
+.winner-card{background:linear-gradient(135deg,rgba(255,215,0,0.12),rgba(255,171,0,0.06));border:1px solid rgba(255,215,0,0.25);border-radius:12px;padding:0.75rem 1rem;position:relative;overflow:hidden;}
+.winner-card::before{content:'';position:absolute;top:0;left:0;right:0;height:2px;background:linear-gradient(90deg,#ffd700,#ffab00);}
+.winner-cat{font-size:0.6rem;font-weight:800;text-transform:uppercase;letter-spacing:0.1em;color:rgba(255,215,0,0.7);margin-bottom:0.25rem;}
+.winner-name{font-family:'Oswald','Impact',sans-serif;font-size:1rem;font-weight:800;color:#fff;line-height:1.2;}
+.winner-car{font-size:0.7rem;color:rgba(255,255,255,0.5);font-weight:600;margin-bottom:0.3rem;}
+.winner-pkg{font-size:1.1rem;font-weight:900;color:#ffd166;font-family:'SF Mono','Fira Code','Consolas',monospace;}
+.winner-pkg-label{font-size:0.55rem;text-transform:uppercase;letter-spacing:0.1em;color:rgba(255,255,255,0.35);font-weight:700;}
+
+/* Copy toast */
+.copy-toast{position:fixed;bottom:2rem;left:50%;transform:translateX(-50%) translateY(100px);background:#2d6a4f;color:#fff;padding:0.6rem 1.5rem;border-radius:8px;font-size:0.85rem;font-weight:700;opacity:0;transition:all 0.3s ease;z-index:999;pointer-events:none;}
+.copy-toast.show{transform:translateX(-50%) translateY(0);opacity:1;}
+</style>
+</head>
+<body data-nav-utility="best-package">
+<div class="tt-shell-content" id="main-content">
+  <div class="page-header">
+    <h1>Best Losing Package</h1>
+    <p class="page-subtitle">Closest losers by reaction time + dial-in accuracy</p>
+  </div>
+
+  <div class="bp-controls">
+    <div class="bp-row">
+      <span id="context-label" style="font-size:0.85rem;color:rgba(255,255,255,0.6);font-weight:600;"></span>
+      <span class="bp-meta" id="bp-count"></span>
+    </div>
+    <div class="bp-row">
+      <span class="bp-label">Categories</span>
+      <div class="bp-checks" id="cat-checks"></div>
+    </div>
+    <div class="bp-row">
+      <span class="bp-label">Round</span>
+      <select id="round-select" style="background:#0d1528;color:#e8e8f0;border:1px solid rgba(255,255,255,0.1);border-radius:8px;padding:0.4rem 0.8rem;font-size:0.8rem;font-family:'SF Mono',monospace;min-width:120px;">
+        <option value="E1" selected>E1</option>
+      </select>
+    </div>
+    <div class="bp-row" style="gap:0.5rem;">
+      <button class="bp-btn" onclick="calculate()">Calculate</button>
+      <button class="bp-btn-copy" id="copy-btn" onclick="copyForEmail()" style="display:none;">Copy for Email</button>
+    </div>
+  </div>
+
+  <div id="bp-winners"></div>
+  <div id="bp-container"><div class="no-results">Select categories and click "Calculate"</div></div>
+</div>
+
+<div class="copy-toast" id="copy-toast">Copied to clipboard!</div>
+
+<script src="/auth.js"></script>
+<script src="/shell.js"></script>
+<script>
+const deviceId = localStorage.getItem("tt-selected-device") || "";
+const eventId = localStorage.getItem("tt-selected-event") || "";
+let allRaces = [];
+let lastResults = null;
+
+function init() {
+  const label = document.getElementById("context-label");
+  if (!deviceId) {
+    label.innerHTML = 'No device selected. <a href="/event-set.html" style="color:#ffd166;">Go to Event Set</a>';
+    return;
+  }
+  if (!eventId) {
+    label.innerHTML = 'No event selected. <a href="/event-set.html" style="color:#ffd166;">Go to Event Set</a>';
+    return;
+  }
+  label.textContent = "Loading...";
+  loadData();
+}
+
+async function loadData() {
+  try {
+    let res;
+    if (eventId === "__all__") {
+      res = await fetch("/api/runs?device_id=" + encodeURIComponent(deviceId) + "&limit=2000");
+    } else {
+      res = await fetch("/api/events/" + encodeURIComponent(eventId) + "/results");
+    }
+    const data = await res.json();
+    allRaces = data.races || data || [];
+    document.getElementById("context-label").textContent = allRaces.length + " runs loaded";
+    buildCategoryChecks();
+  } catch(e) {
+    console.error("Failed to load:", e);
+    document.getElementById("bp-container").innerHTML = '<div class="no-results">Failed to load results</div>';
+  }
+}
+
+function buildCategoryChecks() {
+  const cats = new Set();
+  const rounds = new Set();
+  allRaces.forEach(function(r) {
+    if (r.category) cats.add(r.category);
+    if (r.round) rounds.add(r.round.trim().toUpperCase());
+  });
+  const el = document.getElementById("cat-checks");
+  const sorted = [...cats].sort();
+  if (!sorted.length) { el.textContent = "No categories found"; return; }
+  el.innerHTML = '<label><input type="checkbox" id="cat-all" checked onchange="toggleAllCats(this.checked)"> All</label>' +
+    sorted.map(function(c) { return '<label><input type="checkbox" class="cat-cb" value="' + esc(c) + '" checked> ' + esc(c) + '</label>'; }).join('');
+
+  // Populate round dropdown with actual rounds found in data
+  var roundOrder = ["Q1","Q2","Q3","Q4","TT","E1","E2","E3","E4","E5","E6","FINAL","FINALS"];
+  var sel = document.getElementById("round-select");
+  var found = [...rounds].sort(function(a,b) {
+    var ia = roundOrder.indexOf(a), ib = roundOrder.indexOf(b);
+    if (ia === -1) ia = 99;
+    if (ib === -1) ib = 99;
+    return ia - ib;
+  });
+  sel.innerHTML = '<option value="ALL">All Elimination Rounds</option>';
+  found.forEach(function(r) {
+    var opt = document.createElement("option");
+    opt.value = r;
+    opt.textContent = r;
+    if (r === "E1") opt.selected = true;
+    sel.appendChild(opt);
+  });
+}
+
+function toggleAllCats(checked) {
+  document.querySelectorAll(".cat-cb").forEach(function(cb) { cb.checked = checked; });
+}
+
+function esc(s) { var d = document.createElement("div"); d.textContent = s || ""; return d.innerHTML; }
+
+function isElimRound(round) {
+  if (!round) return false;
+  var u = round.trim().toUpperCase();
+  return u.startsWith("E") || u.startsWith("R") || u === "FINALS" || u === "FINAL" || u === "F" || /^(RD?\d|ROUND \d|\d)$/.test(u);
+}
+
+function isQualRound(round) {
+  if (!round) return false;
+  return round.trim().toUpperCase().startsWith("Q");
+}
+
+function isTimeTrial(round) {
+  if (!round) return false;
+  var u = round.trim().toUpperCase();
+  return u.startsWith("TT") || u.includes("TIME TRIAL") || u === "T";
+}
+
+function roundMatchesFilter(round) {
+  if (!round) return false;
+  var sel = document.getElementById("round-select").value;
+  var u = round.trim().toUpperCase();
+  if (sel === "ALL") return isElimRound(u);
+  return u === sel;
+}
+
+/**
+ * Safely parse a numeric value. Returns NaN if not a valid finite number.
+ */
+function safeNum(val) {
+  if (val === null || val === undefined || val === "") return NaN;
+  var n = parseFloat(val);
+  if (isNaN(n) || !isFinite(n)) return NaN;
+  return n;
+}
+
+function calculate() {
+  var selectedCats = new Set();
+  document.querySelectorAll(".cat-cb:checked").forEach(function(cb) { selectedCats.add(cb.value); });
+
+  if (!selectedCats.size) {
+    document.getElementById("bp-container").innerHTML = '<div class="no-results">Select at least one category</div>';
+    document.getElementById("bp-winners").innerHTML = "";
+    document.getElementById("copy-btn").style.display = "none";
+    lastResults = null;
+    return;
+  }
+
+  var results = {};
+  var totalCount = 0;
+
+  allRaces.forEach(function(r) {
+    var cat = r.category || "Unknown";
+    if (!selectedCats.has(cat)) return;
+    if (!roundMatchesFilter(r.round)) return;
+
+    // Process each side - only LOSERS
+    ["left", "right"].forEach(function(side) {
+      // Determine if this side is the loser
+      var isWinner = false;
+      if (r.winner) {
+        isWinner = r.winner.toUpperCase() === side.toUpperCase();
+      }
+      // Also check is_winner field if present (some data uses 0/1 per side)
+      if (r[side + "_is_winner"] === 1 || r[side + "_is_winner"] === "1") {
+        isWinner = true;
+      }
+      if (isWinner) return; // skip winners, we only want losers
+
+      var p = side + "_";
+      var name = r[p + "name"];
+      if (!name || !name.trim()) return;
+
+      var rt = safeNum(r[p + "rt"]);
+      var et = safeNum(r[p + "et"]);
+      var dial = safeNum(r[p + "dial"]);
+
+      // Validate all three values are real numbers
+      if (isNaN(rt) || isNaN(et) || isNaN(dial)) return;
+
+      // RT must be >= 0 (0.000 is a valid perfect light; negative = red light / foul)
+      if (rt < 0) return;
+
+      // ET must be > 0
+      if (et <= 0) return;
+
+      // Dial must be > 0
+      if (dial <= 0) return;
+
+      // Exclude breakouts: ET less than dial_in
+      if (et < dial) return;
+
+      // Package = RT + (ET - dial_in)
+      var diff = et - dial;
+      var pkg = rt + diff;
+
+      if (!results[cat]) results[cat] = [];
+      results[cat].push({
+        name: name.trim(),
+        carNum: r[p + "car_num"] || "",
+        round: r.round || "",
+        rt: rt,
+        et: et,
+        dial: dial,
+        diff: diff,
+        pkg: pkg
+      });
+      totalCount++;
+    });
+  });
+
+  // Sort each category by package ascending (lower is better), keep top 5
+  Object.keys(results).forEach(function(cat) {
+    results[cat].sort(function(a, b) { return a.pkg - b.pkg; });
+    results[cat] = results[cat].slice(0, 5);
+  });
+
+  lastResults = results;
+  document.getElementById("bp-count").textContent = totalCount + " loser" + (totalCount !== 1 ? "s" : "") + " analyzed";
+  renderWinners(results);
+  renderResults(results);
+  document.getElementById("copy-btn").style.display = Object.keys(results).length ? "" : "none";
+}
+
+function renderWinners(results) {
+  var el = document.getElementById("bp-winners");
+  var cats = Object.keys(results).sort();
+
+  if (!cats.length) {
+    el.innerHTML = "";
+    return;
+  }
+
+  var html = '<div class="winners-section">';
+  html += '<h2>Best Losing Package by Category</h2>';
+  html += '<div class="winners-grid">';
+
+  cats.forEach(function(cat) {
+    var top = results[cat][0];
+    if (!top) return;
+    html += '<div class="winner-card">';
+    html += '<div class="winner-cat">' + esc(cat) + '</div>';
+    html += '<div class="winner-name">' + esc(top.name) + '</div>';
+    html += '<div class="winner-car">' + (top.carNum ? '#' + esc(top.carNum) : '') + ' &mdash; ' + esc(top.round) + '</div>';
+    html += '<div class="winner-pkg-label">Package</div>';
+    html += '<div class="winner-pkg">' + top.pkg.toFixed(4) + '</div>';
+    html += '</div>';
+  });
+
+  html += '</div></div>';
+  el.innerHTML = html;
+}
+
+function renderResults(results) {
+  var el = document.getElementById("bp-container");
+  var cats = Object.keys(results).sort();
+
+  if (!cats.length) {
+    el.innerHTML = '<div class="no-results">No losing packages found matching filters</div>';
+    return;
+  }
+
+  var html = "";
+  cats.forEach(function(cat) {
+    var items = results[cat];
+    html += '<div class="cat-group">';
+    html += '<div class="cat-header"><h3>' + esc(cat) + '</h3><span class="cat-badge">Top ' + items.length + '</span></div>';
+    html += '<div class="bp-wrap"><div class="bp-scroll"><table class="bp-table">';
+    html += '<thead><tr><th>Rank</th><th style="text-align:left">Racer</th><th>Car #</th><th>Round</th><th>RT</th><th>ET</th><th>Dial</th><th>Diff</th><th>Package</th></tr></thead><tbody>';
+    items.forEach(function(item, i) {
+      var rank = i + 1;
+      var rankHtml;
+      if (rank === 1) rankHtml = '<span class="rank-gold">1ST</span>';
+      else if (rank === 2) rankHtml = '<span class="rank-silver">2ND</span>';
+      else if (rank === 3) rankHtml = '<span class="rank-bronze">3RD</span>';
+      else rankHtml = '<span class="rank-num">' + rank + '</span>';
+
+      html += '<tr>';
+      html += '<td>' + rankHtml + '</td>';
+      html += '<td class="td-name">' + esc(item.name) + '</td>';
+      html += '<td>' + esc(item.carNum) + '</td>';
+      html += '<td>' + esc(item.round) + '</td>';
+      html += '<td>' + item.rt.toFixed(4) + '</td>';
+      html += '<td>' + item.et.toFixed(4) + '</td>';
+      html += '<td style="color:#ffd166;">' + item.dial.toFixed(3) + '</td>';
+      html += '<td>' + item.diff.toFixed(4) + '</td>';
+      html += '<td class="td-pkg">' + item.pkg.toFixed(4) + '</td>';
+      html += '</tr>';
+    });
+    html += '</tbody></table></div></div></div>';
+  });
+
+  el.innerHTML = html;
+}
+
+function copyForEmail() {
+  if (!lastResults) return;
+  var cats = Object.keys(lastResults).sort();
+  var lines = [];
+
+  cats.forEach(function(cat) {
+    var items = lastResults[cat];
+    if (!items || !items.length) return;
+    lines.push(cat.toUpperCase());
+    lines.push("Rank\tRacer\tCar#\tRound\tRT\tET\tDial\tDiff\tPackage");
+    items.forEach(function(item, i) {
+      lines.push(
+        (i + 1) + "\t" +
+        item.name + "\t" +
+        (item.carNum ? "#" + item.carNum : "") + "\t" +
+        item.round + "\t" +
+        item.rt.toFixed(3) + "\t" +
+        item.et.toFixed(3) + "\t" +
+        item.dial.toFixed(3) + "\t" +
+        item.diff.toFixed(3) + "\t" +
+        item.pkg.toFixed(4)
+      );
+    });
+    lines.push(""); // blank line between categories
+  });
+
+  var text = lines.join("\n");
+
+  if (navigator.clipboard && navigator.clipboard.writeText) {
+    navigator.clipboard.writeText(text).then(function() {
+      showToast();
+    }).catch(function() {
+      fallbackCopy(text);
+    });
+  } else {
+    fallbackCopy(text);
+  }
+}
+
+function fallbackCopy(text) {
+  var ta = document.createElement("textarea");
+  ta.value = text;
+  ta.style.position = "fixed";
+  ta.style.left = "-9999px";
+  document.body.appendChild(ta);
+  ta.select();
+  try { document.execCommand("copy"); showToast(); } catch(e) { alert("Copy failed. Please copy manually."); }
+  document.body.removeChild(ta);
+}
+
+function showToast() {
+  var toast = document.getElementById("copy-toast");
+  toast.classList.add("show");
+  setTimeout(function() { toast.classList.remove("show"); }, 2000);
+}
+
+init();
+</script>
+</body>
+</html>

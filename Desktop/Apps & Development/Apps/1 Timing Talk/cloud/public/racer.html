@@ -1,0 +1,776 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Racer Profile — Timing Talk</title>
+<link rel="stylesheet" href="/styles.css">
+<style>
+/* ── Page Layout ─────────────────────────────────────────────────── */
+.racer-page { max-width: 80rem; margin: 0 auto; padding: 0 1rem 3rem; }
+
+/* ── Back button ─────────────────────────────────────────────────── */
+.back-link {
+  display: inline-flex; align-items: center; gap: 0.4rem;
+  font-size: 0.78rem; font-weight: 600; color: rgba(255,255,255,0.45);
+  text-decoration: none; margin-bottom: 1rem; transition: color 0.15s;
+}
+.back-link:hover { color: #ffd166; }
+.back-link svg { width: 16px; height: 16px; }
+
+/* ── Profile Header ──────────────────────────────────────────────── */
+.profile-header { margin-bottom: 1.5rem; }
+.profile-name {
+  font-family: 'Oswald','Impact',sans-serif;
+  font-size: 2rem; font-weight: 900; color: #e8e8f0; margin: 0;
+}
+.profile-meta {
+  font-size: 0.75rem; color: rgba(255,255,255,0.4); margin-top: 0.3rem;
+}
+
+/* ── Stats Cards Grid ────────────────────────────────────────────── */
+.stats-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
+  gap: 0.6rem; margin-bottom: 1.5rem;
+}
+.sg-card {
+  background: rgba(10,16,34,0.92);
+  border: 1px solid rgba(255,255,255,0.08);
+  border-radius: 10px; padding: 0.8rem; text-align: center;
+}
+.sg-val {
+  font-size: 1.3rem; font-weight: 900;
+  font-family: 'Oswald','Impact',sans-serif; color: #ffd166;
+}
+.sg-label {
+  font-size: 0.52rem; font-weight: 700; letter-spacing: 0.1em;
+  text-transform: uppercase; color: rgba(255,255,255,0.35); margin-top: 0.15rem;
+}
+.sg-sub {
+  font-size: 0.6rem; color: rgba(255,255,255,0.3); margin-top: 0.1rem;
+  font-family: 'SF Mono','Fira Code','Consolas',monospace;
+}
+
+/* ── Section Cards ───────────────────────────────────────────────── */
+.section {
+  background: rgba(10,16,34,0.92);
+  border: 1px solid rgba(255,255,255,0.08);
+  border-radius: 14px; padding: 1.2rem; margin-bottom: 1rem;
+  position: relative; overflow: hidden;
+}
+.section h3 {
+  font-size: 0.7rem; font-weight: 800; letter-spacing: 0.12em;
+  text-transform: uppercase; color: rgba(255,255,255,0.4); margin: 0 0 0.8rem;
+}
+
+/* ── Run Table ───────────────────────────────────────────────────── */
+.run-scroll {
+  overflow-x: auto; max-height: 600px; overflow-y: auto;
+  scrollbar-width: thin; scrollbar-color: rgba(255,255,255,0.1) transparent;
+}
+.run-table { width: 100%; border-collapse: collapse; font-size: 0.68rem; }
+.run-table th {
+  padding: 0.4rem 0.35rem; font-size: 0.48rem; font-weight: 800;
+  letter-spacing: 0.1em; text-transform: uppercase;
+  color: rgba(255,255,255,0.4); background: rgba(12,19,40,0.98);
+  border-bottom: 1px solid rgba(255,255,255,0.1);
+  text-align: center; position: sticky; top: 0; z-index: 2;
+  white-space: nowrap; cursor: pointer; user-select: none;
+}
+.run-table th:hover { color: rgba(255,255,255,0.7); }
+.run-table th .sort-arrow { font-size: 0.5rem; margin-left: 2px; }
+.run-table td {
+  padding: 0.3rem 0.3rem;
+  font-family: 'SF Mono','Fira Code','Consolas',monospace;
+  font-weight: 600; text-align: center;
+  border-bottom: 1px solid rgba(255,255,255,0.04);
+  white-space: nowrap; color: rgba(255,255,255,0.5);
+}
+.run-table tr:hover { background: rgba(255,255,255,0.03); }
+.run-table tr.win-row { background: rgba(34,197,94,0.06); }
+.run-table tr.win-row:hover { background: rgba(34,197,94,0.1); }
+.td-et { color: #e8e8f0 !important; font-weight: 800 !important; }
+.td-dial { color: #ffd166 !important; }
+.td-name-col {
+  font-family: -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif !important;
+  font-weight: 600 !important; text-align: left !important; color: #e8e8f0 !important;
+  max-width: 90px; overflow: hidden; text-overflow: ellipsis;
+}
+.td-name-col a { color: inherit; text-decoration: none; }
+.td-name-col a:hover { color: #ffd166; }
+.td-dim { font-size: 0.55rem; color: rgba(255,255,255,0.35) !important; }
+
+.win-badge {
+  display: inline-block; background: #22c55e; color: #fff;
+  font-size: 0.5rem; font-weight: 900; padding: 0.1rem 0.3rem; border-radius: 3px;
+}
+.loss-badge {
+  display: inline-block; background: rgba(255,255,255,0.1); color: rgba(255,255,255,0.4);
+  font-size: 0.5rem; font-weight: 900; padding: 0.1rem 0.3rem; border-radius: 3px;
+}
+
+/* ── Head-to-Head ────────────────────────────────────────────────── */
+.h2h-row {
+  display: flex; justify-content: space-between; align-items: center;
+  padding: 0.5rem 0; border-bottom: 1px solid rgba(255,255,255,0.04);
+}
+.h2h-name { font-weight: 700; color: #e8e8f0; font-size: 0.8rem; }
+.h2h-name a { color: inherit; text-decoration: none; }
+.h2h-name a:hover { color: #ffd166; }
+.h2h-record { font-family: 'SF Mono',monospace; font-size: 0.8rem; font-weight: 700; }
+.h2h-bar {
+  height: 6px; border-radius: 3px; background: rgba(255,255,255,0.06);
+  margin-top: 0.2rem; overflow: hidden;
+}
+.h2h-fill { height: 100%; background: #22c55e; border-radius: 3px; transition: width 0.3s; }
+
+/* ── Performance Trends ──────────────────────────────────────────── */
+.trend-row { display: flex; align-items: flex-end; gap: 2px; height: 60px; margin-top: 0.5rem; }
+.trend-bar {
+  flex: 1; min-width: 3px; max-width: 20px; border-radius: 2px 2px 0 0;
+  transition: height 0.3s; position: relative;
+}
+.trend-bar:hover { opacity: 0.8; }
+.trend-bar[title]::after { content: attr(title); }
+.trend-label-row {
+  display: flex; justify-content: space-between;
+  font-size: 0.55rem; color: rgba(255,255,255,0.3); margin-top: 0.2rem;
+  font-family: 'SF Mono',monospace;
+}
+
+/* ── States ──────────────────────────────────────────────────────── */
+.no-data {
+  text-align: center; padding: 3rem; color: rgba(255,255,255,0.3); font-size: 1rem;
+}
+.no-data a { color: #ffd166; }
+.state-msg {
+  text-align: center; padding: 4rem 1rem; color: rgba(255,255,255,0.35); font-size: 1rem;
+}
+.spinner {
+  width: 28px; height: 28px; border: 3px solid rgba(255,255,255,0.08);
+  border-top-color: #ffd166; border-radius: 50%;
+  animation: spin 0.8s linear infinite; margin: 0 auto 1rem;
+}
+@keyframes spin { to { transform: rotate(360deg); } }
+</style>
+</head>
+<body data-nav-primary="racer">
+<div class="tt-shell-content" id="main-content">
+  <div class="racer-page">
+    <a href="/search.html" class="back-link">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor">
+        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7"></path>
+      </svg>
+      Back to Search
+    </a>
+
+    <!-- Search box when no name in URL -->
+    <div id="racer-search" style="display:none;">
+      <div class="page-header">
+        <h1>Racer Profile</h1>
+        <p class="page-subtitle">Search for a racer by name or car number</p>
+      </div>
+      <div style="display:flex;gap:0.5rem;margin-bottom:1rem;max-width:500px;">
+        <input type="text" id="racer-search-input" placeholder="Name or car #..."
+          style="flex:1;padding:0.6rem 1rem;background:#0d1528;color:#e8e8f0;border:1px solid rgba(255,255,255,0.1);border-radius:8px;font-size:0.9rem;"
+          onkeydown="if(event.key==='Enter')searchRacers()">
+        <button onclick="searchRacers()" style="padding:0.6rem 1.2rem;background:linear-gradient(180deg,#ffd166,#ffbf00);color:#1a1400;border:none;border-radius:8px;font-weight:700;cursor:pointer;">Search</button>
+      </div>
+      <div id="search-results"></div>
+    </div>
+
+    <div id="state-loading" class="state-msg" style="display:none;">
+      <div class="spinner"></div>
+      Loading racer profile&hellip;
+    </div>
+    <div id="no-data" class="no-data" style="display:none;">
+      Racer not found. <a href="/search.html">Go to Search</a>
+    </div>
+
+    <div id="profile" style="display:none;">
+      <div class="profile-header">
+        <h1 class="profile-name" id="racer-name"></h1>
+        <div class="profile-meta" id="racer-meta"></div>
+      </div>
+
+      <!-- Tech Card Info -->
+      <div id="tech-card-section" class="section" style="display:none;margin-bottom:1.2rem;">
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:0.8rem;">
+          <div class="sg-card" style="text-align:left;">
+            <div class="sg-label">Driver Info</div>
+            <div id="tc-driver-info" style="font-size:0.78rem;color:rgba(255,255,255,0.7);line-height:1.6;"></div>
+          </div>
+          <div class="sg-card" style="text-align:left;">
+            <div class="sg-label">Car Info</div>
+            <div id="tc-car-info" style="font-size:0.78rem;color:rgba(255,255,255,0.7);line-height:1.6;"></div>
+          </div>
+        </div>
+        <div id="tc-lines" style="display:none;margin-top:0.6rem;">
+          <div class="sg-card" style="text-align:left;">
+            <div class="sg-label">Accomplishments</div>
+            <div id="tc-lines-content" style="font-size:0.78rem;color:#ffd166;line-height:1.6;"></div>
+          </div>
+        </div>
+      </div>
+
+      <div class="stats-grid" id="stats-grid"></div>
+
+      <div class="section" id="runs-section">
+        <h3>All Runs</h3>
+        <div class="run-scroll">
+          <table class="run-table" id="run-table"></table>
+        </div>
+      </div>
+
+      <div class="section" id="h2h-section">
+        <h3>Head-to-Head Records</h3>
+        <div id="h2h-content"></div>
+      </div>
+
+      <div class="section" id="trends-section">
+        <h3>Performance Trends</h3>
+        <div id="trends-content"></div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script src="/auth.js"></script>
+<script src="/shell.js"></script>
+<script>
+(function() {
+  "use strict";
+
+  var deviceId = localStorage.getItem("tt-selected-device") || "";
+  var eventId  = localStorage.getItem("tt-selected-event") || "";
+  var params   = new URLSearchParams(window.location.search);
+  var racerName = params.get("name") || "";
+
+  // ── Helpers ──────────────────────────────────────────────────────
+  function $(id) { return document.getElementById(id); }
+  function show(id) { $(id).style.display = ""; }
+  function hide(id) { $(id).style.display = "none"; }
+  function esc(s) { var d = document.createElement("div"); d.textContent = s || ""; return d.innerHTML; }
+  function pf(v) { var n = parseFloat(v); return isNaN(n) ? null : n; }
+  function pos(v) { return v !== null && isFinite(v) && v > 0 ? v : null; }
+  function fmt(v, d) { d = d != null ? d : 3; return v !== null && isFinite(v) ? v.toFixed(d) : "-"; }
+  function avg(arr) { return arr.length ? arr.reduce(function(a,b){return a+b;},0)/arr.length : null; }
+  function stddev(arr) {
+    if (arr.length < 2) return null;
+    var m = avg(arr);
+    var ss = arr.reduce(function(s,v){return s + (v-m)*(v-m);}, 0);
+    return Math.sqrt(ss / (arr.length - 1));
+  }
+
+  // ── Sort state ───────────────────────────────────────────────────
+  var currentSort = { col: null, asc: true };
+  var allMyRuns = [];
+
+  // ── Init ─────────────────────────────────────────────────────────
+  function init() {
+    if (!racerName) {
+      hide("state-loading");
+      show("racer-search");
+      document.getElementById("racer-search-input").focus();
+      return;
+    }
+    if (!deviceId) {
+      hide("state-loading");
+      show("no-data");
+      return;
+    }
+    document.title = racerName + " — Timing Talk";
+    loadData();
+  }
+
+  async function loadData() {
+    try {
+      var url;
+      if (eventId && eventId !== "__all__") {
+        url = "/api/events/" + encodeURIComponent(eventId) + "/results";
+      } else {
+        url = "/api/runs?device_id=" + encodeURIComponent(deviceId) + "&limit=2000";
+      }
+
+      var res = await fetch(url);
+      var data = await res.json();
+      var allRaces = data.races || data || [];
+
+      hide("state-loading");
+
+      // Flatten to individual lane runs for this racer
+      var myRuns = [];
+      allRaces.forEach(function(race) {
+        ["left","right"].forEach(function(side) {
+          var p = side + "_";
+          if ((race[p+"name"]||"").trim().toLowerCase() === racerName.trim().toLowerCase()) {
+            var opp = side === "left" ? "right" : "left";
+            var op = opp + "_";
+            myRuns.push({
+              date: race.created_date || "",
+              time: race.timestamp || "",
+              category: race.category || "",
+              round: race.round || "",
+              car_num: race[p+"car_num"] || "",
+              cls: race[p+"class"] || "",
+              rt: pf(race[p+"rt"]),
+              sixty: pf(race[p+"sixty"]),
+              three30: pf(race[p+"three30"]),
+              six60: pf(race[p+"six60"]),
+              six60_speed: pf(race[p+"six60_speed"]),
+              thousand: pf(race[p+"thousand"]),
+              et: pf(race[p+"et"]),
+              speed: pf(race[p+"speed"]),
+              dial: pf(race[p+"dial"]),
+              mov: pf(race[p+"mov"]),
+              lane: side === "left" ? "L" : "R",
+              isWinner: race.winner && race.winner.toUpperCase() === side.toUpperCase(),
+              opponent: race[op+"name"] || "",
+              opp_car: race[op+"car_num"] || "",
+              timestamp_ms: race.timestamp_ms || 0
+            });
+          }
+        });
+      });
+
+      myRuns.sort(function(a,b) { return (b.timestamp_ms||0) - (a.timestamp_ms||0); });
+
+      if (!myRuns.length) {
+        show("no-data");
+        return;
+      }
+
+      allMyRuns = myRuns;
+      show("profile");
+      render(myRuns);
+      // Fetch tech card data using name + first car number found
+      var firstCar = myRuns.length ? myRuns[0].car_num : "";
+      loadTechCard(racerName, firstCar);
+    } catch(e) {
+      console.error("Profile load failed:", e);
+      hide("state-loading");
+      show("no-data");
+    }
+  }
+
+  // ── Render ───────────────────────────────────────────────────────
+  function render(runs) {
+    // Header
+    $("racer-name").textContent = racerName;
+    var carNums = [];
+    var categories = [];
+    var classes = [];
+    runs.forEach(function(r) {
+      if (r.car_num && carNums.indexOf(r.car_num) === -1) carNums.push(r.car_num);
+      if (r.category && categories.indexOf(r.category) === -1) categories.push(r.category);
+      if (r.cls && classes.indexOf(r.cls) === -1) classes.push(r.cls);
+    });
+    var metaParts = [];
+    if (carNums.length) metaParts.push("Car #" + carNums.join(", #"));
+    if (categories.length) metaParts.push(categories.join(", "));
+    if (classes.length) metaParts.push(classes.join(", "));
+    metaParts.push(runs.length + " runs");
+    $("racer-meta").textContent = metaParts.join("  |  ");
+
+    // Summary stats
+    renderStats(runs);
+
+    // All runs table
+    renderRunTable(runs);
+
+    // Head-to-head
+    renderH2H(runs);
+
+    // Performance trends
+    renderTrends(runs);
+  }
+
+  // ── Summary Stats Cards ──────────────────────────────────────────
+  function renderStats(runs) {
+    var ets = runs.map(function(r){return pos(r.et);}).filter(Boolean);
+    var rts = runs.map(function(r){return r.rt !== null && isFinite(r.rt) && r.rt >= 0 ? r.rt : null;}).filter(function(v){return v !== null;});
+    var speeds = runs.map(function(r){return pos(r.speed);}).filter(Boolean);
+
+    var bestET = ets.length ? Math.min.apply(null, ets) : null;
+    var avgET = avg(ets);
+    var bestRT = rts.length ? Math.min.apply(null, rts) : null;
+    var avgRT = avg(rts);
+    var bestSpeed = speeds.length ? Math.max.apply(null, speeds) : null;
+    var avgSpeed = avg(speeds);
+
+    // Win/Loss
+    var elimRuns = runs.filter(function(r) {
+      return r.round && r.round.toString().toUpperCase().charAt(0) === "E";
+    });
+    var wins = elimRuns.filter(function(r){return r.isWinner;}).length;
+    var losses = elimRuns.length - wins;
+
+    // Breakout count
+    var dialRuns = runs.filter(function(r){ return pos(r.et) && pos(r.dial); });
+    var breakouts = dialRuns.filter(function(r){ return r.et < r.dial; }).length;
+
+    // ET Consistency (std dev)
+    var etStdDev = stddev(ets);
+
+    // Dial-in Accuracy (avg |ET - dial|)
+    var dialDiffs = dialRuns.map(function(r){ return Math.abs(r.et - r.dial); });
+    var dialAccuracy = avg(dialDiffs);
+
+    // Best Package (RT + |ET - dial|)
+    var pkgRuns = runs.filter(function(r){ return r.rt !== null && r.rt >= 0 && pos(r.et) && pos(r.dial); });
+    var packages = pkgRuns.map(function(r){ return r.rt + Math.abs(r.et - r.dial); });
+    var bestPkg = packages.length ? Math.min.apply(null, packages) : null;
+
+    var html = "";
+    html += sg(fmt(bestET, 3), "Best ET", avgET !== null ? "Avg " + fmt(avgET, 3) : null);
+    html += sg(fmt(bestRT, 3), "Best RT", avgRT !== null ? "Avg " + fmt(avgRT, 3) : null);
+    html += sg(bestSpeed !== null ? fmt(bestSpeed, 2) : "-", "Best Speed", avgSpeed !== null ? "Avg " + fmt(avgSpeed, 2) : null);
+    html += sg(wins + "-" + losses, "W/L Record", elimRuns.length ? (elimRuns.length + " elim runs") : null);
+    html += sg(breakouts + "/" + dialRuns.length, "Breakouts", dialRuns.length ? ((breakouts / dialRuns.length * 100).toFixed(0) + "% rate") : null);
+    html += sg(etStdDev !== null ? fmt(etStdDev, 4) : "-", "ET Consistency", ets.length > 1 ? "Std Dev of " + ets.length + " runs" : null);
+    html += sg(dialAccuracy !== null ? fmt(dialAccuracy, 4) : "-", "Dial Accuracy", dialRuns.length ? ("Avg |ET-Dial| of " + dialRuns.length) : null);
+    html += sg(bestPkg !== null ? fmt(bestPkg, 4) : "-", "Best Package", pkgRuns.length ? "RT + |ET-Dial|" : null);
+
+    $("stats-grid").innerHTML = html;
+  }
+
+  function sg(val, label, sub) {
+    var html = '<div class="sg-card"><div class="sg-val">' + val + '</div>';
+    html += '<div class="sg-label">' + label + '</div>';
+    if (sub) html += '<div class="sg-sub">' + esc(sub) + '</div>';
+    html += '</div>';
+    return html;
+  }
+
+  // ── All Runs Table (sortable) ────────────────────────────────────
+  var COL_DEFS = [
+    { key: "date",     label: "Date",    fmt: function(r){ return r.date; }, cls: "td-dim" },
+    { key: "round",    label: "Round",   fmt: function(r){ return r.round; } },
+    { key: "category", label: "Category",fmt: function(r){ return r.category; }, cls: "td-dim" },
+    { key: "cls",      label: "Class",   fmt: function(r){ return r.cls; }, cls: "td-dim" },
+    { key: "rt",       label: "RT",      fmt: function(r){ return fmt(r.rt, 3); }, sort: function(r){ return r.rt; } },
+    { key: "sixty",    label: "60ft",    fmt: function(r){ return fmt(r.sixty, 3); }, sort: function(r){ return r.sixty; } },
+    { key: "three30",  label: "330",     fmt: function(r){ return fmt(r.three30, 3); }, sort: function(r){ return r.three30; } },
+    { key: "six60",    label: "660",     fmt: function(r){ return fmt(r.six60, 3); }, sort: function(r){ return r.six60; } },
+    { key: "six60_speed", label: "660mph", fmt: function(r){ return fmt(r.six60_speed, 2); }, sort: function(r){ return r.six60_speed; } },
+    { key: "thousand", label: "1000",    fmt: function(r){ return fmt(r.thousand, 3); }, sort: function(r){ return r.thousand; } },
+    { key: "et",       label: "ET",      fmt: function(r){ return fmt(r.et, 3); }, sort: function(r){ return r.et; }, cls: "td-et" },
+    { key: "speed",    label: "MPH",     fmt: function(r){ return fmt(r.speed, 2); }, sort: function(r){ return r.speed; } },
+    { key: "dial",     label: "Dial",    fmt: function(r){ return fmt(r.dial, 3); }, sort: function(r){ return r.dial; }, cls: "td-dial" },
+    { key: "mov",      label: "MOV",     fmt: function(r){ return fmt(r.mov, 4); }, sort: function(r){ return r.mov; } },
+    { key: "wl",       label: "W/L",     fmt: function(r){ return r.isWinner ? '<span class="win-badge">W</span>' : '<span class="loss-badge">L</span>'; } }
+  ];
+
+  function renderRunTable(runs) {
+    var thead = "<thead><tr>";
+    COL_DEFS.forEach(function(col) {
+      var arrow = "";
+      if (currentSort.col === col.key) {
+        arrow = ' <span class="sort-arrow">' + (currentSort.asc ? "\u25B2" : "\u25BC") + '</span>';
+      }
+      thead += '<th data-col="' + col.key + '">' + col.label + arrow + '</th>';
+    });
+    thead += "</tr></thead>";
+
+    var tbody = "<tbody>";
+    runs.forEach(function(r) {
+      var rowCls = r.isWinner ? ' class="win-row"' : '';
+      tbody += '<tr' + rowCls + '>';
+      COL_DEFS.forEach(function(col) {
+        var tdCls = col.cls ? ' class="' + col.cls + '"' : '';
+        tbody += '<td' + tdCls + '>' + col.fmt(r) + '</td>';
+      });
+      tbody += '</tr>';
+    });
+    tbody += "</tbody>";
+
+    $("run-table").innerHTML = thead + tbody;
+
+    // Attach sort handlers
+    var ths = $("run-table").querySelectorAll("th");
+    ths.forEach(function(th) {
+      th.addEventListener("click", function() {
+        var colKey = th.getAttribute("data-col");
+        if (currentSort.col === colKey) {
+          currentSort.asc = !currentSort.asc;
+        } else {
+          currentSort.col = colKey;
+          currentSort.asc = true;
+        }
+        var colDef = COL_DEFS.filter(function(c){ return c.key === colKey; })[0];
+        var sortFn = colDef && colDef.sort ? colDef.sort : function(r){ return r[colKey] || ""; };
+        var sorted = allMyRuns.slice().sort(function(a, b) {
+          var va = sortFn(a);
+          var vb = sortFn(b);
+          if (va === null || va === undefined) va = currentSort.asc ? Infinity : -Infinity;
+          if (vb === null || vb === undefined) vb = currentSort.asc ? Infinity : -Infinity;
+          if (typeof va === "string") {
+            var cmp = va.localeCompare(vb, undefined, {sensitivity: "base"});
+            return currentSort.asc ? cmp : -cmp;
+          }
+          return currentSort.asc ? va - vb : vb - va;
+        });
+        renderRunTable(sorted);
+      });
+    });
+  }
+
+  // ── Head-to-Head ─────────────────────────────────────────────────
+  function renderH2H(runs) {
+    var opponents = {};
+    runs.forEach(function(r) {
+      if (!r.opponent) return;
+      if (!opponents[r.opponent]) opponents[r.opponent] = { wins: 0, losses: 0, total: 0 };
+      opponents[r.opponent].total++;
+      if (r.isWinner) opponents[r.opponent].wins++;
+      else opponents[r.opponent].losses++;
+    });
+
+    var h2h = [];
+    Object.keys(opponents).forEach(function(name) {
+      var rec = opponents[name];
+      h2h.push({ name: name, wins: rec.wins, losses: rec.losses, total: rec.total });
+    });
+    h2h.sort(function(a, b) { return b.total - a.total; });
+
+    if (!h2h.length) {
+      $("h2h-section").style.display = "none";
+      return;
+    }
+
+    var html = "";
+    h2h.forEach(function(rec) {
+      var pct = rec.total > 0 ? (rec.wins / rec.total * 100).toFixed(0) : "0";
+      var color = rec.wins > rec.losses ? "#22c55e" : rec.wins < rec.losses ? "#ef4444" : "rgba(255,255,255,0.5)";
+      html += '<div class="h2h-row">';
+      html += '<div><span class="h2h-name"><a href="/racer.html?name=' + encodeURIComponent(rec.name) + '">' + esc(rec.name) + '</a></span></div>';
+      html += '<div class="h2h-record" style="color:' + color + ';">' + rec.wins + '-' + rec.losses + ' (' + rec.total + ' races)</div>';
+      html += '</div>';
+      html += '<div class="h2h-bar"><div class="h2h-fill" style="width:' + pct + '%;"></div></div>';
+    });
+
+    $("h2h-content").innerHTML = html;
+  }
+
+  // ── Performance Trends ───────────────────────────────────────────
+  function renderTrends(runs) {
+    // Reverse so oldest first (chronological)
+    var chronRuns = runs.slice().reverse();
+
+    var ets = chronRuns.map(function(r){ return pos(r.et); });
+    var rts = chronRuns.map(function(r){ return r.rt !== null && isFinite(r.rt) && r.rt >= 0 ? r.rt : null; });
+
+    var html = "";
+
+    // ET Trend
+    var validEts = ets.filter(function(v){ return v !== null; });
+    if (validEts.length >= 2) {
+      html += '<div style="margin-bottom:1.5rem;">';
+      html += '<div style="font-size:0.6rem;font-weight:800;letter-spacing:0.1em;text-transform:uppercase;color:rgba(255,255,255,0.35);margin-bottom:0.4rem;">ET Over Runs</div>';
+      html += buildTrendBars(ets, "#C8102E", 3);
+      html += '</div>';
+    }
+
+    // RT Trend
+    var validRts = rts.filter(function(v){ return v !== null; });
+    if (validRts.length >= 2) {
+      html += '<div>';
+      html += '<div style="font-size:0.6rem;font-weight:800;letter-spacing:0.1em;text-transform:uppercase;color:rgba(255,255,255,0.35);margin-bottom:0.4rem;">RT Over Runs</div>';
+      html += buildTrendBars(rts, "#003DA5", 3);
+      html += '</div>';
+    }
+
+    if (!html) {
+      $("trends-section").style.display = "none";
+      return;
+    }
+
+    $("trends-content").innerHTML = html;
+  }
+
+  function buildTrendBars(values, color, decimals) {
+    var filtered = values.filter(function(v){ return v !== null; });
+    if (!filtered.length) return "";
+
+    var minV = Math.min.apply(null, filtered);
+    var maxV = Math.max.apply(null, filtered);
+    var range = maxV - minV;
+    if (range < 0.001) range = 0.001;
+
+    var html = '<div class="trend-row">';
+    values.forEach(function(v) {
+      if (v === null) {
+        html += '<div class="trend-bar" style="height:1px;background:rgba(255,255,255,0.05);"></div>';
+      } else {
+        var pct = ((v - minV) / range) * 100;
+        // Invert: lower is better, so taller bar = lower value
+        var heightPct = Math.max(5, 100 - pct);
+        html += '<div class="trend-bar" style="height:' + heightPct + '%;background:' + color + ';" title="' + v.toFixed(decimals) + '"></div>';
+      }
+    });
+    html += '</div>';
+
+    html += '<div class="trend-label-row">';
+    html += '<span>Best: ' + minV.toFixed(decimals) + '</span>';
+    html += '<span>Worst: ' + maxV.toFixed(decimals) + '</span>';
+    html += '</div>';
+
+    return html;
+  }
+
+  // ── Search function (when no name in URL) ────────────────────────
+  window.searchRacers = async function() {
+    var q = (document.getElementById("racer-search-input").value || "").trim();
+    if (!q) return;
+    var el = document.getElementById("search-results");
+    el.innerHTML = '<div class="state-msg"><div class="spinner"></div>Searching...</div>';
+
+    try {
+      // Search tech cards first
+      var tcRes = await fetch("/api/tech-cards?q=" + encodeURIComponent(q));
+      var tcData = await tcRes.json();
+      var cards = tcData.cards || [];
+
+      // Also search runs for names
+      var runNames = new Map(); // name -> {car_nums, categories}
+      if (deviceId) {
+        var runUrl = "/api/runs?device_id=" + encodeURIComponent(deviceId) + "&limit=2000";
+        var runRes = await fetch(runUrl);
+        var runData = await runRes.json();
+        var races = runData.races || [];
+        var ql = q.toLowerCase();
+        races.forEach(function(r) {
+          ["left", "right", "lane3", "lane4"].forEach(function(side) {
+            var name = r[side + "_name"] || "";
+            var car = r[side + "_car_num"] || "";
+            if (name && (name.toLowerCase().includes(ql) || car.includes(q))) {
+              if (!runNames.has(name)) runNames.set(name, {cars: new Set(), cats: new Set()});
+              var entry = runNames.get(name);
+              if (car) entry.cars.add(car);
+              if (r.category) entry.cats.add(r.category);
+            }
+          });
+        });
+      }
+
+      // Merge results
+      var results = [];
+      // Add tech card matches
+      cards.forEach(function(c) {
+        var fullName = (c.first_name || "") + " " + (c.last_name || "");
+        results.push({
+          name: fullName.trim(),
+          car_num: c.car_number || "",
+          category: (c.entries || []).map(function(e){return e.category;}).join(", "),
+          source: "tech-card",
+          member: c.member_num
+        });
+      });
+      // Add run matches not already in tech cards
+      runNames.forEach(function(info, name) {
+        var already = results.some(function(r){ return r.name.toLowerCase() === name.toLowerCase(); });
+        if (!already) {
+          results.push({
+            name: name,
+            car_num: [...info.cars].join(", "),
+            category: [...info.cats].join(", "),
+            source: "runs"
+          });
+        }
+      });
+
+      if (!results.length) {
+        el.innerHTML = '<div class="no-data">No racers found for "' + esc(q) + '"</div>';
+        return;
+      }
+
+      var h = '<table class="run-table"><thead><tr><th>Name</th><th>Car #</th><th>Category</th><th>Source</th></tr></thead><tbody>';
+      results.forEach(function(r) {
+        h += '<tr style="cursor:pointer;" onclick="window.location.href=\'/racer.html?name=' + encodeURIComponent(r.name) + '\'">';
+        h += '<td style="font-weight:700;color:#ffd166;">' + esc(r.name) + '</td>';
+        h += '<td>' + esc(r.car_num) + '</td>';
+        h += '<td>' + esc(r.category) + '</td>';
+        h += '<td style="font-size:0.65rem;color:rgba(255,255,255,0.3);">' + r.source + '</td>';
+        h += '</tr>';
+      });
+      h += '</tbody></table>';
+      el.innerHTML = h;
+    } catch(e) {
+      el.innerHTML = '<div class="no-data">Search failed: ' + e.message + '</div>';
+    }
+  };
+
+  // ── Fetch & display tech card data ──────────────────────────────
+  async function loadTechCard(name, carNum) {
+    try {
+      // Search by name AND car number to match correctly
+      var q = name;
+      var res = await fetch("/api/tech-cards?q=" + encodeURIComponent(q));
+      var data = await res.json();
+      var cards = data.cards || [];
+
+      // Find best match by name AND car number
+      var match = null;
+      cards.forEach(function(c) {
+        var fullName = ((c.first_name || "") + " " + (c.last_name || "")).trim().toLowerCase();
+        var cNums = [c.car_number || ""];
+        (c.entries || []).forEach(function(e) { if (e.car_number) cNums.push(e.car_number); });
+        if (fullName === name.toLowerCase() && cNums.some(function(n){ return n === carNum; })) {
+          match = c;
+        }
+      });
+      // Fallback: just name match
+      if (!match) {
+        cards.forEach(function(c) {
+          var fullName = ((c.first_name || "") + " " + (c.last_name || "")).trim().toLowerCase();
+          if (fullName === name.toLowerCase()) match = c;
+        });
+      }
+
+      if (!match) return;
+
+      // Find the entry matching the car number
+      var entry = (match.entries || []).find(function(e){ return e.car_number === carNum; }) || (match.entries || [])[0] || {};
+
+      // Driver info
+      var driverLines = [];
+      if (match.city || match.state) driverLines.push(esc((match.city || "") + (match.state ? ", " + match.state : "")));
+      if (match.occupation) driverLines.push("Occupation: " + esc(match.occupation));
+      if (entry.owner) driverLines.push("Owner: " + esc(entry.owner));
+      if (entry.crew_chief) driverLines.push("Crew Chief: " + esc(entry.crew_chief));
+      if (match.home_division) driverLines.push("Division: " + esc(match.home_division));
+      document.getElementById("tc-driver-info").innerHTML = driverLines.join("<br>");
+
+      // Car info
+      var carLines = [];
+      if (entry.body_type || entry.body_year) carLines.push(esc((entry.body_year || "") + " " + (entry.body_type || "")).trim());
+      if (entry.engine_make || entry.engine_year) carLines.push("Engine: " + esc((entry.engine_make || "") + " " + (entry.engine_year || "")).trim());
+      if (entry.cui_cc) carLines.push("CUI/CC: " + esc(entry.cui_cc));
+      if (entry.hp) carLines.push("HP: " + esc(entry.hp));
+      if (entry.factored_hp) carLines.push("Factored HP: " + esc(entry.factored_hp));
+      if (entry.category || entry.class) carLines.push("Class: " + esc((entry.category || "") + (entry.class ? " / " + entry.class : "")));
+      document.getElementById("tc-car-info").innerHTML = carLines.join("<br>");
+
+      // Lines (accomplishments)
+      var lines = [match.line1, match.line2, match.line3, match.line4, match.line5, match.line6]
+        .concat((entry.line1 ? [entry.line1, entry.line2, entry.line3, entry.line4, entry.line5, entry.line6] : []))
+        .filter(function(l){ return l && l.trim(); });
+      // Dedupe
+      lines = [...new Set(lines)];
+      if (lines.length) {
+        document.getElementById("tc-lines-content").innerHTML = lines.map(function(l){ return esc(l); }).join("<br>");
+        show("tc-lines");
+      }
+
+      show("tech-card-section");
+    } catch(e) {
+      console.warn("Tech card fetch failed:", e);
+    }
+  }
+
+  init();
+})();
+</script>
+</body>
+</html>

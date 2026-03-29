@@ -1,0 +1,463 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Brackets — Timing Talk</title>
+<link rel="stylesheet" href="/styles.css">
+<style>
+/* ─── Filters / Header ─────────────────────────────────────────────────── */
+.bracket-filters{display:flex;gap:0.75rem;margin-bottom:1rem;flex-wrap:wrap;align-items:center;}
+.bracket-filters select{background:#1a1a2e;color:#e8e8f0;border:1px solid #2a2a4a;border-radius:8px;padding:0.5rem 1rem;font-size:0.85rem;min-width:180px;}
+.bracket-filters select:focus{outline:none;border-color:#ffd166;}
+.bracket-meta{font-size:0.72rem;color:rgba(255,255,255,0.4);margin-left:auto;}
+.bracket-actions{display:flex;gap:0.5rem;}
+.bracket-actions button{background:rgba(255,255,255,0.06);border:1px solid rgba(255,255,255,0.1);color:rgba(255,255,255,0.6);padding:0.35rem 0.9rem;border-radius:6px;font-size:0.7rem;cursor:pointer;transition:all 0.15s;}
+.bracket-actions button:hover{background:rgba(255,255,255,0.1);}
+.bracket-actions button.active{background:rgba(255,209,102,0.12);border-color:rgba(255,209,102,0.3);color:#ffd166;}
+
+/* ─── Qualifying Section ───────────────────────────────────────────────── */
+.qual-section{margin-bottom:1.5rem;display:none;}
+.qual-section.show{display:block;}
+.qual-wrap{background:linear-gradient(180deg,rgba(13,21,43,0.92),rgba(8,13,28,0.98));border:1px solid rgba(255,255,255,0.1);border-radius:14px;overflow:hidden;box-shadow:0 4px 16px rgba(0,0,0,0.2);}
+.qual-wrap::before{content:'';display:block;height:2px;background:linear-gradient(90deg,#3357ff,#ffd166);}
+.qual-header{padding:0.6rem 1rem;font-size:0.6rem;font-weight:800;letter-spacing:0.12em;text-transform:uppercase;color:rgba(255,255,255,0.35);border-bottom:1px solid rgba(255,255,255,0.06);}
+.qual-scroll{max-height:320px;overflow:auto;scrollbar-width:thin;scrollbar-color:rgba(255,255,255,0.1) transparent;}
+.qual-table{width:100%;border-collapse:collapse;font-size:0.7rem;}
+.qual-table th{position:sticky;top:0;z-index:2;padding:0.35rem 0.4rem;font-size:0.5rem;font-weight:800;letter-spacing:0.1em;text-transform:uppercase;color:rgba(255,255,255,0.35);background:rgba(10,16,34,0.98);border-bottom:1px solid rgba(255,255,255,0.08);text-align:center;white-space:nowrap;}
+.qual-table td{padding:0.3rem 0.4rem;text-align:center;border-bottom:1px solid rgba(255,255,255,0.03);font-family:'SF Mono','Fira Code','Consolas',monospace;font-weight:600;white-space:nowrap;}
+.qual-table tr:hover{background:rgba(255,255,255,0.03);}
+.qual-pos{color:#ffd166;font-weight:800;}
+.qual-name{text-align:left !important;font-family:'Oswald','Impact',sans-serif !important;max-width:120px;overflow:hidden;text-overflow:ellipsis;}
+.qual-name a{color:inherit;text-decoration:none;}
+.qual-name a:hover{color:#ffd166;}
+.qual-et{font-weight:800;color:#e8e8f0;font-size:0.8rem;}
+
+/* ─── Bracket Tree Container ───────────────────────────────────────────── */
+.bracket-tree{display:flex;gap:0;overflow-x:auto;padding:1rem 0 2rem;scrollbar-width:thin;scrollbar-color:rgba(255,255,255,0.1) transparent;position:relative;}
+
+/* ─── Round Column ─────────────────────────────────────────────────────── */
+.round-col{min-width:280px;flex-shrink:0;display:flex;flex-direction:column;position:relative;}
+.round-header{text-align:center;margin-bottom:0.75rem;position:sticky;top:0;z-index:5;}
+.round-badge{display:inline-block;padding:0.3rem 0.9rem;font-size:0.6rem;font-weight:800;letter-spacing:0.12em;text-transform:uppercase;border-radius:20px;}
+.round-badge.elim{background:rgba(255,48,79,0.15);color:#ff304f;}
+.round-badge.final{background:linear-gradient(135deg,rgba(255,209,102,0.2),rgba(255,209,102,0.08));color:#ffd166;}
+.round-matchups{flex:1;display:flex;flex-direction:column;justify-content:space-around;padding:0 0.5rem;gap:0.5rem;}
+
+/* ─── Connector Lines ──────────────────────────────────────────────────── */
+.round-connector{min-width:36px;flex-shrink:0;display:flex;flex-direction:column;justify-content:space-around;position:relative;}
+.connector-pair{flex:1;display:flex;align-items:center;position:relative;}
+.connector-pair svg{width:100%;height:100%;overflow:visible;}
+.connector-pair svg path{stroke:rgba(255,255,255,0.1);stroke-width:1.5;fill:none;}
+
+/* ─── Matchup Card ─────────────────────────────────────────────────────── */
+.matchup{background:rgba(10,16,34,0.92);border:1px solid rgba(255,255,255,0.08);border-radius:10px;overflow:hidden;transition:border-color 0.2s;}
+.matchup:hover{border-color:rgba(255,255,255,0.15);}
+.matchup-racer{display:grid;grid-template-columns:auto 1fr auto;align-items:center;padding:0.45rem 0.65rem;gap:0.4rem;font-size:0.72rem;border-bottom:1px solid rgba(255,255,255,0.04);}
+.matchup-racer:last-child{border-bottom:none;}
+.matchup-racer.winner{background:rgba(34,197,94,0.06);}
+.matchup-racer.loser{opacity:0.45;}
+.matchup-racer.bye-slot{opacity:0.3;font-style:italic;padding:0.35rem 0.65rem;}
+
+/* Badge */
+.w-badge{font-size:0.48rem;font-weight:900;padding:0.1rem 0.28rem;border-radius:3px;background:linear-gradient(180deg,#ffd166,#ffe066);color:#1a1400;letter-spacing:0.04em;flex-shrink:0;}
+.l-badge{font-size:0.48rem;font-weight:900;padding:0.1rem 0.28rem;border-radius:3px;background:rgba(255,255,255,0.08);color:rgba(255,255,255,0.3);flex-shrink:0;}
+.place-badge{font-size:0.48rem;font-weight:900;padding:0.1rem 0.28rem;border-radius:3px;letter-spacing:0.04em;flex-shrink:0;}
+.place-badge.p-w{background:linear-gradient(180deg,#ffd166,#ffe066);color:#1a1400;}
+.place-badge.p-ru{background:#3357ff;color:#fff;}
+.place-badge.p-3{background:#555;color:#fff;}
+.place-badge.p-4{background:#333;color:#fff;}
+
+/* Racer info */
+.racer-info{display:flex;flex-direction:column;gap:0.05rem;min-width:0;}
+.racer-name{font-weight:700;color:#e8e8f0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;font-size:0.72rem;line-height:1.2;}
+.racer-name a{color:inherit;text-decoration:none;}
+.racer-name a:hover{color:#ffd166;}
+.racer-sub{display:flex;gap:0.4rem;font-size:0.55rem;color:rgba(255,255,255,0.35);}
+.racer-sub .car-num{color:rgba(255,255,255,0.5);}
+.racer-sub .dial-val{color:#ffd166;}
+
+/* Stats */
+.racer-stats{display:flex;flex-direction:column;align-items:flex-end;gap:0.05rem;flex-shrink:0;}
+.racer-et{font-family:'SF Mono','Fira Code','Consolas',monospace;font-weight:800;color:#e8e8f0;font-size:0.78rem;line-height:1.2;}
+.racer-detail{display:flex;gap:0.35rem;font-family:'SF Mono','Fira Code','Consolas',monospace;font-size:0.55rem;color:rgba(255,255,255,0.45);}
+.racer-detail .rt-val{color:rgba(255,255,255,0.6);}
+.racer-detail .mov-val{color:#22c55e;}
+
+/* ─── 4-Wide Matchup ──────────────────────────────────────────────────── */
+.matchup.four-wide .matchup-racer{grid-template-columns:auto 1fr auto auto;gap:0.35rem;}
+.lane-tag{font-size:0.45rem;font-weight:800;color:rgba(255,255,255,0.25);letter-spacing:0.06em;text-transform:uppercase;flex-shrink:0;width:16px;text-align:center;}
+
+/* ─── Empty / No-data ──────────────────────────────────────────────────── */
+.no-data{text-align:center;padding:3rem;color:rgba(255,255,255,0.3);font-size:0.9rem;}
+.no-data a{color:#ffd166;}
+</style>
+</head>
+<body data-nav-primary="brackets">
+<div class="tt-shell-content" id="main-content">
+  <div class="page-header">
+    <h1>Elimination Brackets</h1>
+    <p class="page-subtitle">View matchups and results from elimination rounds</p>
+  </div>
+
+  <div id="no-device" class="no-data" style="display:none;">No device selected. <a href="/event-set.html">Go to Event Set</a></div>
+
+  <div id="content" style="display:none;">
+    <div class="bracket-filters">
+      <select id="cat-select" onchange="onCategoryChange()"><option value="">Select a category...</option></select>
+      <span id="run-count" class="bracket-meta"></span>
+      <div class="bracket-actions">
+        <button id="btn-qual" onclick="toggleQualifying()">Show Qualifying</button>
+        <button onclick="refreshData()">Refresh</button>
+      </div>
+    </div>
+
+    <!-- Qualifying Section -->
+    <div id="qual-section" class="qual-section"></div>
+
+    <!-- Bracket Tree -->
+    <div id="brackets-container" class="bracket-tree">
+      <div class="no-data">Select a category to view brackets</div>
+    </div>
+  </div>
+</div>
+
+<script src="/auth.js"></script>
+<script src="/shell.js"></script>
+<script>
+const deviceId = localStorage.getItem("tt-selected-device") || "";
+const eventId  = localStorage.getItem("tt-selected-event") || "";
+let allRaces = [];
+let showQualifying = false;
+
+function esc(s) { const d = document.createElement("div"); d.textContent = s || ""; return d.innerHTML; }
+
+/* ─── Round classification ─────────────────────────────────────────────── */
+const ROUND_ORDER = ["Q1","Q2","Q3","Q4","E1","E2","E3","E4","E5","E6","FINAL","FINALS"];
+
+function roundIndex(r) {
+  if (!r) return 99;
+  const u = r.toUpperCase().trim();
+  const i = ROUND_ORDER.indexOf(u);
+  if (i !== -1) return i;
+  if (/^R\d/.test(u)) return 10 + parseInt(u.slice(1));
+  return 99;
+}
+
+function isQualRound(r) {
+  if (!r) return false;
+  const u = r.toUpperCase().trim();
+  return u.startsWith("Q");
+}
+
+function isElimRound(r) {
+  if (!r) return false;
+  const u = r.toUpperCase().trim();
+  return u.startsWith("E") || u === "FINAL" || u === "FINALS" || /^R\d/.test(u);
+}
+
+function isFinalRound(r) {
+  if (!r) return false;
+  const u = r.toUpperCase().trim();
+  return u === "FINAL" || u === "FINALS";
+}
+
+function is4Wide(race) {
+  return !!(race.lane3_name || race.lane4_name || race.lane3_rt || race.lane4_rt || race.lane3_et || race.lane4_et);
+}
+
+/* ─── Data loading ─────────────────────────────────────────────────────── */
+async function init() {
+  if (!deviceId) { document.getElementById("no-device").style.display = "block"; return; }
+  document.getElementById("content").style.display = "block";
+  await loadData();
+}
+
+async function loadData() {
+  let url;
+  if (eventId && eventId !== "__all__") {
+    url = "/api/events/" + encodeURIComponent(eventId) + "/results?limit=2000";
+  } else {
+    url = "/api/runs?device_id=" + encodeURIComponent(deviceId) + "&limit=2000";
+  }
+  try {
+    const res = await fetch(url);
+    const data = await res.json();
+    allRaces = data.races || data || [];
+    populateCategories();
+  } catch(e) {
+    console.error("Failed to load data:", e);
+    document.getElementById("brackets-container").innerHTML = '<div class="no-data">Failed to load data</div>';
+  }
+}
+
+function refreshData() { loadData(); }
+
+/* ─── Category dropdown ────────────────────────────────────────────────── */
+function populateCategories() {
+  const cats = new Set();
+  allRaces.forEach(r => { if (r.category) cats.add(r.category); });
+  const sorted = [...cats].sort();
+  const sel = document.getElementById("cat-select");
+  // preserve current selection
+  const prev = sel.value;
+  sel.innerHTML = '<option value="">Select a category...</option>';
+  sorted.forEach(c => { const o = document.createElement("option"); o.value = c; o.textContent = c; sel.appendChild(o); });
+  if (prev && sorted.includes(prev)) { sel.value = prev; onCategoryChange(); }
+  else if (sorted.length === 0) { document.getElementById("brackets-container").innerHTML = '<div class="no-data">No elimination rounds found in the data</div>'; }
+}
+
+function onCategoryChange() {
+  renderBrackets();
+  renderQualifying();
+}
+
+/* ─── Toggle qualifying ────────────────────────────────────────────────── */
+function toggleQualifying() {
+  showQualifying = !showQualifying;
+  document.getElementById("btn-qual").classList.toggle("active", showQualifying);
+  document.getElementById("btn-qual").textContent = showQualifying ? "Hide Qualifying" : "Show Qualifying";
+  renderQualifying();
+}
+
+/* ─── Qualifying rendering ─────────────────────────────────────────────── */
+function renderQualifying() {
+  const section = document.getElementById("qual-section");
+  const cat = document.getElementById("cat-select").value;
+  if (!showQualifying || !cat) { section.className = "qual-section"; section.innerHTML = ""; return; }
+
+  const qualRaces = allRaces.filter(r => r.category === cat && isQualRound(r.round));
+  if (!qualRaces.length) { section.className = "qual-section show"; section.innerHTML = '<div class="qual-wrap"><div class="qual-header">Qualifying Rounds</div><div style="padding:1.5rem;text-align:center;color:rgba(255,255,255,0.3);font-size:0.8rem;">No qualifying data for this category</div></div>'; return; }
+
+  // Flatten to individual lane entries and group by round
+  const entries = [];
+  qualRaces.forEach(race => {
+    ["left","right","lane3","lane4"].forEach(side => {
+      const p = side + "_";
+      if (!race[p+"name"]) return;
+      entries.push({
+        name: race[p+"name"], car_num: race[p+"car_num"]||"", rt: race[p+"rt"]||"",
+        et: race[p+"et"]||"", speed: race[p+"speed"]||"", dial: race[p+"dial"]||"",
+        round: race.round||""
+      });
+    });
+  });
+
+  const rounds = [...new Set(entries.map(e => e.round))].sort((a,b) => roundIndex(a) - roundIndex(b));
+
+  let html = '<div class="qual-wrap"><div class="qual-header">Qualifying Rounds</div><div class="qual-scroll"><table class="qual-table"><thead><tr><th>#</th><th>Rnd</th><th>Driver</th><th>Car#</th><th>R/T</th><th>E.T.</th><th>MPH</th><th>Dial</th></tr></thead><tbody>';
+
+  rounds.forEach(round => {
+    const rEntries = entries.filter(e => e.round === round);
+    // Sort by ET ascending (best first)
+    rEntries.sort((a,b) => {
+      const ea = parseFloat(a.et) || 999;
+      const eb = parseFloat(b.et) || 999;
+      return ea - eb;
+    });
+    rEntries.forEach((e, idx) => {
+      html += '<tr>';
+      html += '<td class="qual-pos">' + (idx + 1) + '</td>';
+      html += '<td>' + esc(e.round) + '</td>';
+      html += '<td class="qual-name"><a href="/racer.html?name=' + encodeURIComponent(e.name) + '">' + esc(e.name) + '</a></td>';
+      html += '<td>' + esc(e.car_num) + '</td>';
+      html += '<td>' + esc(e.rt) + '</td>';
+      html += '<td class="qual-et">' + esc(e.et) + '</td>';
+      html += '<td>' + esc(e.speed) + '</td>';
+      html += '<td style="color:#ffd166;">' + esc(e.dial) + '</td>';
+      html += '</tr>';
+    });
+  });
+
+  html += '</tbody></table></div></div>';
+  section.className = "qual-section show";
+  section.innerHTML = html;
+}
+
+/* ─── Bracket rendering ────────────────────────────────────────────────── */
+function renderBrackets() {
+  const cat = document.getElementById("cat-select").value;
+  const container = document.getElementById("brackets-container");
+  if (!cat) { container.innerHTML = '<div class="no-data">Select a category</div>'; return; }
+
+  const catRaces = allRaces.filter(r => r.category === cat && isElimRound(r.round));
+  if (!catRaces.length) { container.innerHTML = '<div class="no-data">No elimination runs for this category</div>'; document.getElementById("run-count").textContent = ""; return; }
+
+  document.getElementById("run-count").textContent = catRaces.length + " elimination runs";
+
+  // Group by round
+  const roundMap = {};
+  catRaces.forEach(r => {
+    const rnd = r.round || "?";
+    if (!roundMap[rnd]) roundMap[rnd] = [];
+    roundMap[rnd].push(r);
+  });
+
+  const roundKeys = Object.keys(roundMap).sort((a,b) => roundIndex(a) - roundIndex(b));
+
+  // Build columns
+  let html = "";
+  roundKeys.forEach((rnd, colIdx) => {
+    const races = roundMap[rnd];
+    const matchups = groupRacesIntoMatchups(races);
+    const final = isFinalRound(rnd);
+
+    html += '<div class="round-col">';
+    html += '<div class="round-header"><span class="round-badge ' + (final ? "final" : "elim") + '">' + esc(rnd) + '</span></div>';
+    html += '<div class="round-matchups">';
+
+    matchups.forEach(m => {
+      html += renderMatchup(m);
+    });
+
+    html += '</div></div>';
+
+    // Add connector lines between rounds (except after last)
+    if (colIdx < roundKeys.length - 1) {
+      const nextRound = roundKeys[colIdx + 1];
+      const nextMatchups = groupRacesIntoMatchups(roundMap[nextRound]);
+      html += renderConnectors(matchups.length, nextMatchups.length);
+    }
+  });
+
+  container.innerHTML = html;
+}
+
+/* ─── Group races into matchups (by close timestamps) ──────────────────── */
+function groupRacesIntoMatchups(races) {
+  if (!races.length) return [];
+  const sorted = [...races].sort((a,b) => (a.timestamp_ms||0) - (b.timestamp_ms||0));
+  const matchups = [];
+  let cur = [sorted[0]];
+  for (let i = 1; i < sorted.length; i++) {
+    if (Math.abs((sorted[i].timestamp_ms||0) - (cur[0].timestamp_ms||0)) < 5000) {
+      cur.push(sorted[i]);
+    } else {
+      matchups.push(cur);
+      cur = [sorted[i]];
+    }
+  }
+  matchups.push(cur);
+  return matchups;
+}
+
+/* ─── Render a single matchup card ─────────────────────────────────────── */
+function renderMatchup(races) {
+  if (!races.length) return '<div class="matchup"><div class="matchup-racer bye-slot">BYE</div></div>';
+
+  const race = races[0]; // primary race record
+  const fourWide = is4Wide(race);
+  const sides = fourWide
+    ? [{key:"left",label:"L1"},{key:"right",label:"L2"},{key:"lane3",label:"L3"},{key:"lane4",label:"L4"}]
+    : [{key:"left",label:"L"},{key:"right",label:"R"}];
+
+  let html = '<div class="matchup' + (fourWide ? ' four-wide' : '') + '">';
+
+  sides.forEach(s => {
+    const p = s.key + "_";
+    const name = race[p+"name"] || "";
+    const carNum = race[p+"car_num"] || "";
+    const rt = race[p+"rt"] || "";
+    const et = race[p+"et"] || "";
+    const dial = race[p+"dial"] || "";
+    const mov = race[p+"mov"] || "";
+    const speed = race[p+"speed"] || "";
+
+    if (!name) {
+      html += '<div class="matchup-racer bye-slot">BYE</div>';
+      return;
+    }
+
+    // Determine winner/loser status
+    let isWinner = false;
+    let badge = "";
+
+    if (fourWide) {
+      const sideResult = (race[p+"result"] || "").toUpperCase();
+      if (sideResult === "W") { isWinner = true; badge = '<span class="place-badge p-w">W</span>'; }
+      else if (sideResult === "R") { badge = '<span class="place-badge p-ru">R/U</span>'; }
+      else if (sideResult === "3") { badge = '<span class="place-badge p-3">3RD</span>'; }
+      else if (sideResult === "4") { badge = '<span class="place-badge p-4">4TH</span>'; }
+      else if (race.winner && race.winner.toUpperCase() === s.key.toUpperCase()) { isWinner = true; badge = '<span class="place-badge p-w">W</span>'; }
+    } else {
+      const w = (race.winner || "").toUpperCase();
+      const sideMap = {left:"LEFT",right:"RIGHT"};
+      if (w === sideMap[s.key]) { isWinner = true; badge = '<span class="w-badge">W</span>'; }
+      else if (race.winner) { badge = '<span class="l-badge">L</span>'; }
+    }
+
+    const cls = isWinner ? "winner" : (race.winner ? "loser" : "");
+
+    html += '<div class="matchup-racer ' + cls + '">';
+
+    // Badge column
+    if (fourWide) {
+      html += '<span class="lane-tag">' + s.label + '</span>';
+      html += (badge || '<span style="width:22px;display:inline-block;"></span>');
+    } else {
+      html += (badge || '<span style="width:20px;display:inline-block;"></span>');
+    }
+
+    // Name + sub info
+    html += '<div class="racer-info">';
+    html += '<span class="racer-name"><a href="/racer.html?name=' + encodeURIComponent(name) + '">' + esc(name) + '</a></span>';
+    html += '<span class="racer-sub">';
+    if (carNum) html += '<span class="car-num">#' + esc(carNum) + '</span>';
+    if (dial) html += '<span class="dial-val">Dial ' + esc(dial) + '</span>';
+    html += '</span>';
+    html += '</div>';
+
+    // Stats
+    html += '<div class="racer-stats">';
+    if (et) html += '<span class="racer-et">' + esc(et) + '</span>';
+    html += '<span class="racer-detail">';
+    if (rt) html += '<span class="rt-val">RT ' + esc(rt) + '</span>';
+    if (mov) html += '<span class="mov-val">MOV ' + esc(mov) + '</span>';
+    html += '</span>';
+    html += '</div>';
+
+    html += '</div>';
+  });
+
+  html += '</div>';
+  return html;
+}
+
+/* ─── Connector SVG lines between round columns ───────────────────────── */
+function renderConnectors(fromCount, toCount) {
+  if (fromCount === 0 || toCount === 0) return '';
+
+  // Approximate: draw simple bracket lines
+  // Each "from" matchup is roughly equal height; pairs feed into one "to" matchup
+  const pairsPerNext = Math.max(1, Math.ceil(fromCount / toCount));
+  const totalH = Math.max(fromCount, toCount) * 80; // rough px per matchup
+
+  let html = '<div class="round-connector" style="min-width:36px;">';
+  html += '<svg viewBox="0 0 36 ' + totalH + '" preserveAspectRatio="none" style="width:36px;height:100%;">';
+
+  const fromSpacing = totalH / fromCount;
+  const toSpacing = totalH / toCount;
+
+  for (let t = 0; t < toCount; t++) {
+    const toY = toSpacing * t + toSpacing / 2;
+    // Connect each pair of "from" slots
+    const startFrom = t * pairsPerNext;
+    const endFrom = Math.min(startFrom + pairsPerNext, fromCount);
+    for (let f = startFrom; f < endFrom; f++) {
+      const fromY = fromSpacing * f + fromSpacing / 2;
+      html += '<path d="M0,' + fromY + ' C18,' + fromY + ' 18,' + toY + ' 36,' + toY + '"/>';
+    }
+  }
+
+  html += '</svg></div>';
+  return html;
+}
+
+/* ─── Init ─────────────────────────────────────────────────────────────── */
+init();
+
+// Auto-refresh every 30s
+setInterval(() => { if (document.getElementById("cat-select").value) loadData(); }, 30000);
+</script>
+</body>
+</html>

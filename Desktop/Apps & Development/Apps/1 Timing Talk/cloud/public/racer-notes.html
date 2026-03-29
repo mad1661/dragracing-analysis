@@ -1,0 +1,555 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Racer Notes — Timing Talk</title>
+<link rel="stylesheet" href="/styles.css">
+<style>
+/* ─── Search Autocomplete ────────────────────────────────── */
+.rn-search-wrap {
+  position: relative;
+  max-width: 560px;
+  margin: 0 auto 2rem;
+}
+
+.rn-search-input {
+  width: 100%;
+  padding: 0.9rem 1.1rem 0.9rem 3rem;
+  font-size: 1.1rem;
+  border: 1px solid var(--border);
+  border-radius: 14px;
+  background: rgba(10, 14, 26, 0.8);
+  color: var(--text);
+  outline: none;
+  font-family: inherit;
+  transition: border-color 0.15s, box-shadow 0.15s;
+}
+
+.rn-search-input:focus {
+  border-color: rgba(200, 16, 46, 0.55);
+  box-shadow: 0 0 0 3px rgba(200, 16, 46, 0.12);
+}
+
+.rn-search-input::placeholder { color: var(--text-muted); }
+
+.rn-search-icon {
+  position: absolute;
+  left: 1rem;
+  top: 50%;
+  transform: translateY(-50%);
+  width: 20px;
+  height: 20px;
+  color: var(--text-muted);
+  pointer-events: none;
+}
+
+.rn-dropdown {
+  position: absolute;
+  top: calc(100% + 4px);
+  left: 0;
+  right: 0;
+  background: rgba(26, 26, 46, 0.98);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  max-height: 320px;
+  overflow-y: auto;
+  z-index: 50;
+  box-shadow: 0 16px 40px rgba(2, 6, 23, 0.5);
+}
+
+.rn-dropdown-item {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  padding: 0.7rem 1rem;
+  cursor: pointer;
+  transition: background 0.12s;
+  border-bottom: 1px solid rgba(42, 42, 68, 0.5);
+}
+
+.rn-dropdown-item:last-child { border-bottom: none; }
+
+.rn-dropdown-item:hover,
+.rn-dropdown-item.active {
+  background: rgba(200, 16, 46, 0.1);
+}
+
+.rn-dropdown-photo {
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  object-fit: cover;
+  border: 2px solid var(--border);
+  flex-shrink: 0;
+}
+
+.rn-dropdown-photo-placeholder {
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--surface2);
+  color: var(--text-muted);
+  font-size: 0.7rem;
+  font-weight: 700;
+  flex-shrink: 0;
+  border: 2px solid var(--border);
+}
+
+.rn-dropdown-info { flex: 1; min-width: 0; }
+.rn-dropdown-name { color: white; font-weight: 700; font-size: 0.9rem; }
+.rn-dropdown-meta { color: var(--text-muted); font-size: 0.76rem; }
+.rn-dropdown-car {
+  color: #ffd166;
+  font-weight: 700;
+  font-size: 0.88rem;
+  flex-shrink: 0;
+}
+
+.rn-no-results {
+  padding: 1.25rem;
+  text-align: center;
+  color: var(--text-muted);
+  font-size: 0.85rem;
+}
+
+/* ─── Racer Card ─────────────────────────────────────────── */
+.rn-card {
+  max-width: 640px;
+  margin: 0 auto;
+  background: linear-gradient(180deg, rgba(30, 30, 50, 0.95), rgba(26, 26, 46, 0.95));
+  border: 1px solid var(--border);
+  border-radius: 16px;
+  padding: 1.5rem;
+  box-shadow: var(--shadow);
+  animation: fadeIn 0.2s ease;
+}
+
+@keyframes fadeIn {
+  from { opacity: 0; transform: translateY(-6px); }
+  to { opacity: 1; transform: none; }
+}
+
+.rn-card-header {
+  display: flex;
+  align-items: flex-start;
+  gap: 1.25rem;
+  margin-bottom: 1.25rem;
+}
+
+.rn-card-photo {
+  width: 80px;
+  height: 80px;
+  border-radius: 50%;
+  object-fit: cover;
+  border: 3px solid var(--border);
+  flex-shrink: 0;
+}
+
+.rn-card-photo-placeholder {
+  width: 80px;
+  height: 80px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--surface2);
+  color: var(--text-muted);
+  font-size: 1.5rem;
+  font-weight: 700;
+  flex-shrink: 0;
+  border: 3px solid var(--border);
+}
+
+.rn-card-title { flex: 1; min-width: 0; }
+
+.rn-card-name {
+  font-size: 1.35rem;
+  font-weight: 800;
+  color: white;
+  letter-spacing: -0.02em;
+  margin-bottom: 0.15rem;
+}
+
+.rn-card-car {
+  color: #ffd166;
+  font-weight: 700;
+  font-size: 1rem;
+  margin-bottom: 0.35rem;
+}
+
+.rn-card-badges {
+  display: flex;
+  gap: 0.4rem;
+  flex-wrap: wrap;
+}
+
+.rn-card-details {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(175px, 1fr));
+  gap: 0.65rem;
+  padding: 1rem;
+  background: var(--surface2);
+  border-radius: 12px;
+  margin-bottom: 1.25rem;
+}
+
+.rn-detail-field label {
+  font-size: 0.68rem;
+  color: var(--text-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  margin: 0;
+}
+
+.rn-detail-field span {
+  display: block;
+  color: var(--text);
+  font-weight: 600;
+  font-size: 0.88rem;
+}
+
+.rn-notes-section { margin-top: 0.25rem; }
+
+.rn-notes-label {
+  font-size: 0.82rem;
+  font-weight: 700;
+  color: var(--text-dim);
+  margin-bottom: 0.5rem;
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+}
+
+.rn-notes-label svg {
+  width: 16px;
+  height: 16px;
+  color: var(--text-muted);
+}
+
+.rn-textarea {
+  width: 100%;
+  min-height: 140px;
+  padding: 0.85rem 1rem;
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  background: rgba(10, 14, 26, 0.8);
+  color: var(--text);
+  font-size: 0.92rem;
+  font-family: inherit;
+  line-height: 1.6;
+  outline: none;
+  resize: vertical;
+  transition: border-color 0.15s, box-shadow 0.15s;
+}
+
+.rn-textarea:focus {
+  border-color: rgba(200, 16, 46, 0.55);
+  box-shadow: 0 0 0 3px rgba(200, 16, 46, 0.12);
+}
+
+.rn-textarea::placeholder { color: var(--text-muted); }
+
+.rn-save-row {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  margin-top: 0.75rem;
+}
+
+.rn-save-status {
+  font-size: 0.82rem;
+  font-weight: 600;
+  transition: opacity 0.3s;
+}
+
+.rn-save-status.success { color: #22c55e; }
+.rn-save-status.error { color: #ef4444; }
+
+/* ─── Empty State ────────────────────────────────────────── */
+.rn-empty {
+  text-align: center;
+  padding: 3rem 1rem;
+  color: var(--text-muted);
+}
+
+.rn-empty svg {
+  width: 48px;
+  height: 48px;
+  color: var(--text-muted);
+  margin-bottom: 0.75rem;
+  opacity: 0.5;
+}
+
+.rn-empty p {
+  font-size: 0.92rem;
+  color: var(--text-muted);
+  margin: 0;
+}
+</style>
+</head>
+<body data-nav-utility="racer-notes">
+<div class="tt-shell-content" id="main-content">
+  <div class="page-header" style="text-align:center;margin-bottom:1.5rem;">
+    <h1 style="font-size:1.6rem;margin-bottom:0.25rem;">Racer Notes</h1>
+    <p class="page-subtitle" style="color:var(--text-muted);font-size:0.88rem;">
+      Search for a racer and add talking points for the announcer booth
+    </p>
+  </div>
+
+  <!-- Search -->
+  <div class="rn-search-wrap">
+    <svg class="rn-search-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor">
+      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/>
+    </svg>
+    <input type="text" class="rn-search-input" id="rn-search" placeholder="Search by name or car number..." autocomplete="off">
+    <div class="rn-dropdown hidden" id="rn-dropdown"></div>
+  </div>
+
+  <!-- Selected Racer Card -->
+  <div id="rn-racer-card"></div>
+
+  <!-- Empty State -->
+  <div class="rn-empty" id="rn-empty">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor">
+      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"/>
+    </svg>
+    <p>Search for a racer above to add or edit announcer notes</p>
+  </div>
+</div>
+
+<script src="/auth.js"></script>
+<script src="/shell.js"></script>
+<script>
+(async function() {
+  await initFirebase();
+
+  const API = "/api";
+  const searchInput = document.getElementById("rn-search");
+  const dropdown = document.getElementById("rn-dropdown");
+  const cardContainer = document.getElementById("rn-racer-card");
+  const emptyState = document.getElementById("rn-empty");
+
+  let debounceTimer = null;
+  let activeIndex = -1;
+  let searchResults = [];
+  let selectedRacer = null;
+
+  // ─── Search with debounce ─────────────────────────────
+  searchInput.addEventListener("input", () => {
+    const q = searchInput.value.trim();
+    clearTimeout(debounceTimer);
+    if (q.length < 2) {
+      hideDropdown();
+      return;
+    }
+    debounceTimer = setTimeout(() => fetchResults(q), 250);
+  });
+
+  searchInput.addEventListener("keydown", (e) => {
+    if (!searchResults.length) return;
+    const items = dropdown.querySelectorAll(".rn-dropdown-item");
+
+    if (e.key === "ArrowDown") {
+      e.preventDefault();
+      activeIndex = Math.min(activeIndex + 1, items.length - 1);
+      updateActiveItem(items);
+    } else if (e.key === "ArrowUp") {
+      e.preventDefault();
+      activeIndex = Math.max(activeIndex - 1, 0);
+      updateActiveItem(items);
+    } else if (e.key === "Enter") {
+      e.preventDefault();
+      if (activeIndex >= 0 && activeIndex < searchResults.length) {
+        selectRacer(searchResults[activeIndex]);
+      }
+    } else if (e.key === "Escape") {
+      hideDropdown();
+    }
+  });
+
+  document.addEventListener("click", (e) => {
+    if (!e.target.closest(".rn-search-wrap")) hideDropdown();
+  });
+
+  function updateActiveItem(items) {
+    items.forEach((el, i) => el.classList.toggle("active", i === activeIndex));
+    if (items[activeIndex]) items[activeIndex].scrollIntoView({ block: "nearest" });
+  }
+
+  async function fetchResults(query) {
+    try {
+      const params = new URLSearchParams({ q: query, limit: "20" });
+      const resp = await fetch(API + "/tech-cards?" + params.toString());
+      const data = await resp.json();
+      const cards = data.cards || [];
+
+      // Flatten entries so each category/class combo is a result
+      searchResults = [];
+      for (const c of cards) {
+        const entries = c.entries && c.entries.length ? c.entries : [{}];
+        for (const e of entries) {
+          searchResults.push({ ...c, _entry: e });
+        }
+      }
+
+      if (!searchResults.length) {
+        dropdown.innerHTML = '<div class="rn-no-results">No racers found</div>';
+        dropdown.classList.remove("hidden");
+        return;
+      }
+
+      activeIndex = -1;
+      dropdown.innerHTML = searchResults.map((c, i) => {
+        const e = c._entry;
+        const photoHtml = c.photo_url
+          ? `<img src="${c.photo_url}" class="rn-dropdown-photo" alt="" onerror="this.outerHTML='<span class=\\'rn-dropdown-photo-placeholder\\'>${(c.first_name||'')[0]||''}${(c.last_name||'')[0]||''}</span>'">`
+          : `<span class="rn-dropdown-photo-placeholder">${(c.first_name||'')[0]||''}${(c.last_name||'')[0]||''}</span>`;
+        const meta = [e.category, e.class].filter(Boolean).join(" / ") || "";
+        return `<div class="rn-dropdown-item" data-index="${i}">
+          ${photoHtml}
+          <div class="rn-dropdown-info">
+            <div class="rn-dropdown-name">${c.first_name} ${c.last_name}</div>
+            <div class="rn-dropdown-meta">${meta}</div>
+          </div>
+          <div class="rn-dropdown-car">#${c.car_number || "—"}</div>
+        </div>`;
+      }).join("");
+
+      dropdown.classList.remove("hidden");
+
+      dropdown.querySelectorAll(".rn-dropdown-item").forEach((el) => {
+        el.addEventListener("click", () => {
+          const idx = parseInt(el.dataset.index, 10);
+          selectRacer(searchResults[idx]);
+        });
+      });
+    } catch (err) {
+      dropdown.innerHTML = '<div class="rn-no-results">Search error</div>';
+      dropdown.classList.remove("hidden");
+    }
+  }
+
+  function hideDropdown() {
+    dropdown.classList.add("hidden");
+    dropdown.innerHTML = "";
+    searchResults = [];
+    activeIndex = -1;
+  }
+
+  // ─── Select & Render Racer Card ───────────────────────
+  async function selectRacer(card) {
+    hideDropdown();
+    searchInput.value = `${card.first_name} ${card.last_name}`;
+
+    // Fetch full detail
+    try {
+      const resp = await fetch(API + "/tech-cards/" + card.member_num);
+      if (!resp.ok) throw new Error("Failed to load racer");
+      const full = await resp.json();
+      selectedRacer = full;
+
+      // Pick the matching entry if multi-entry
+      const entry = card._entry || (full.entries && full.entries[0]) || {};
+      renderCard(full, entry);
+      emptyState.classList.add("hidden");
+    } catch (err) {
+      cardContainer.innerHTML = `<div class="alert alert-error" style="max-width:640px;margin:0 auto;">${err.message}</div>`;
+    }
+  }
+
+  function renderCard(c, entry) {
+    const e = entry;
+    const photoHtml = c.photo_url
+      ? `<img src="${c.photo_url}" class="rn-card-photo" alt="" onerror="this.style.display='none'">`
+      : `<div class="rn-card-photo-placeholder">${(c.first_name||'')[0]||''}${(c.last_name||'')[0]||''}</div>`;
+
+    const engine = [e.engine_make, e.engine_year, e.cui_cc ? e.cui_cc + "ci" : ""].filter(Boolean).join(" ");
+    const body = [e.body_type, e.body_year].filter(Boolean).join(" ");
+    const hometown = [c.city, c.state].filter(Boolean).join(", ");
+
+    cardContainer.innerHTML = `<div class="rn-card">
+      <div class="rn-card-header">
+        ${photoHtml}
+        <div class="rn-card-title">
+          <div class="rn-card-name">${c.first_name} ${c.last_name}</div>
+          <div class="rn-card-car">Car #${c.car_number || "—"}</div>
+          <div class="rn-card-badges">
+            ${e.category ? `<span class="badge badge-new">${e.category}</span>` : ""}
+            ${e.class ? `<span class="badge badge-key">${e.class}</span>` : ""}
+          </div>
+        </div>
+      </div>
+
+      <div class="rn-card-details">
+        <div class="rn-detail-field"><label>Hometown</label><span>${hometown || "—"}</span></div>
+        <div class="rn-detail-field"><label>Crew Chief</label><span>${e.crew_chief || "—"}</span></div>
+        <div class="rn-detail-field"><label>Owner</label><span>${e.owner || "—"}</span></div>
+        <div class="rn-detail-field"><label>Body</label><span>${body || "—"}</span></div>
+        <div class="rn-detail-field"><label>Engine</label><span>${engine || "—"}</span></div>
+        <div class="rn-detail-field"><label>HP</label><span>${e.hp || "—"}</span></div>
+      </div>
+
+      <div class="rn-notes-section">
+        <div class="rn-notes-label">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"/>
+          </svg>
+          Announcer Notes
+        </div>
+        <textarea class="rn-textarea" id="rn-notes" placeholder="Add talking points, fun facts, sponsor info, past wins...">${c.announcer_notes || ""}</textarea>
+        <div class="rn-save-row">
+          <button class="btn btn-primary" id="rn-save-btn" onclick="saveNotes()">Save Notes</button>
+          <span class="rn-save-status" id="rn-save-status"></span>
+        </div>
+      </div>
+    </div>`;
+  }
+
+  // ─── Save Notes ───────────────────────────────────────
+  window.saveNotes = async function() {
+    if (!selectedRacer) return;
+    const btn = document.getElementById("rn-save-btn");
+    const status = document.getElementById("rn-save-status");
+    const notes = document.getElementById("rn-notes").value;
+
+    btn.disabled = true;
+    btn.textContent = "Saving...";
+    status.textContent = "";
+    status.className = "rn-save-status";
+
+    try {
+      const token = _currentUser ? await _currentUser.getIdToken() : null;
+      const headers = { "Content-Type": "application/json" };
+      if (token) headers["Authorization"] = "Bearer " + token;
+
+      const resp = await fetch(API + "/tech-cards/" + selectedRacer.member_num, {
+        method: "PATCH",
+        headers,
+        body: JSON.stringify({ announcer_notes: notes }),
+      });
+
+      if (!resp.ok) throw new Error("Save failed");
+
+      selectedRacer.announcer_notes = notes;
+      status.textContent = "Saved successfully";
+      status.className = "rn-save-status success";
+      setTimeout(() => { status.textContent = ""; }, 3000);
+    } catch (err) {
+      status.textContent = "Error: " + err.message;
+      status.className = "rn-save-status error";
+    } finally {
+      btn.disabled = false;
+      btn.textContent = "Save Notes";
+    }
+  };
+
+  // Focus search on load
+  searchInput.focus();
+})();
+</script>
+</body>
+</html>

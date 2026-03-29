@@ -1,0 +1,17 @@
+{
+  "rules": {
+    "devices": {
+      ".read": "auth != null",
+      "$deviceId": {
+        "status": {
+          ".read": true,
+          ".write": "auth != null"
+        },
+        "stream": {
+          ".read": "auth != null",
+          ".write": "auth != null"
+        }
+      }
+    }
+  }
+}

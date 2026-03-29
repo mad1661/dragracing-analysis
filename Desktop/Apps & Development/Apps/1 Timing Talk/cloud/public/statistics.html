@@ -1,0 +1,47 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Statistics - Timing Talk</title>
+  <link rel="stylesheet" href="/styles.css">
+</head>
+<body data-nav-primary="statistics">
+  <div class="hero">
+    <h1>Statistics</h1>
+    <p>Track-level analytics, category summaries, and session trends will live here in the TiminData-style shell.</p>
+  </div>
+
+  <div class="page">
+    <div class="card card-highlight">
+      <h3>Coming Soon</h3>
+      <p>The raw-data APIs are in place. This page is the future home for aggregate metrics, leaderboards, and session performance views.</p>
+      <div class="btn-row">
+        <a href="/raw/?view=runs" class="btn btn-primary">Browse Runs</a>
+        <a href="/raw/?view=noshows" class="btn btn-outline">See No Shows</a>
+      </div>
+    </div>
+
+    <div class="coming-grid">
+      <div class="coming-stat">
+        <strong>Best ET / MPH</strong>
+        Surface top performances across categories and rounds.
+      </div>
+      <div class="coming-stat">
+        <strong>Class Health</strong>
+        Track pair counts, turnout, and completion pace.
+      </div>
+      <div class="coming-stat">
+        <strong>Session Trends</strong>
+        Follow the event as it evolves through the day.
+      </div>
+    </div>
+  </div>
+
+  <div class="footer">Timing Talk · Statistics</div>
+
+  <script src="/shell.js"></script>
+  <script src="/auth.js"></script>
+  <script>initFirebase();</script>
+</body>
+</html>

@@ -1,0 +1,330 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Admin — Timing Talk</title>
+<link rel="stylesheet" href="/styles.css">
+<style>
+.admin-header{display:flex;align-items:center;gap:0.75rem;margin-bottom:1.5rem;flex-wrap:wrap;}
+.admin-header select{background:#1a1a2e;color:#e8e8f0;border:1px solid #2a2a4a;border-radius:8px;padding:0.5rem 1rem;font-size:0.85rem;min-width:220px;flex:1;}
+.stats-row{display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:0.75rem;margin-bottom:1.5rem;}
+.stat-card{background:rgba(10,16,34,0.92);border:1px solid rgba(255,255,255,0.08);border-radius:12px;padding:1rem;text-align:center;}
+.stat-val{font-size:1.6rem;font-weight:900;font-family:'Oswald','Impact',sans-serif;color:#ffd166;}
+.stat-label{font-size:0.6rem;font-weight:700;letter-spacing:0.1em;text-transform:uppercase;color:rgba(255,255,255,0.4);margin-top:0.2rem;}
+.events-table-wrap{background:rgba(10,16,34,0.92);border:1px solid rgba(255,255,255,0.08);border-radius:14px;overflow:hidden;margin-bottom:1.5rem;}
+.events-table-wrap::before{content:'';display:block;height:2px;background:linear-gradient(90deg,#ff304f,#ffd166,#3357ff);}
+.events-table{width:100%;border-collapse:collapse;font-size:0.75rem;}
+.events-table th{padding:0.6rem 0.5rem;font-size:0.52rem;font-weight:800;letter-spacing:0.12em;text-transform:uppercase;color:rgba(255,255,255,0.4);background:rgba(12,19,40,0.98);border-bottom:1px solid rgba(255,255,255,0.1);text-align:left;}
+.events-table td{padding:0.5rem;border-bottom:1px solid rgba(255,255,255,0.04);vertical-align:middle;}
+.events-table tr:hover{background:rgba(255,255,255,0.03);}
+.evt-name{font-weight:700;color:#e8e8f0;}
+.evt-dates{font-family:'SF Mono','Fira Code','Consolas',monospace;font-size:0.7rem;color:rgba(255,255,255,0.6);}
+.evt-count{font-weight:800;color:#ffd166;font-size:0.9rem;}
+.badge{display:inline-block;padding:0.15rem 0.5rem;border-radius:4px;font-size:0.55rem;font-weight:800;letter-spacing:0.08em;text-transform:uppercase;}
+.badge-active{background:rgba(34,197,94,0.15);color:#22c55e;border:1px solid rgba(34,197,94,0.3);}
+.badge-completed{background:rgba(100,116,139,0.15);color:#94a3b8;border:1px solid rgba(100,116,139,0.3);}
+.badge-draft{background:rgba(255,209,102,0.15);color:#ffd166;border:1px solid rgba(255,209,102,0.3);}
+.evt-actions{display:flex;gap:0.3rem;}
+.evt-actions button{padding:0.25rem 0.6rem;border-radius:5px;font-size:0.65rem;font-weight:700;cursor:pointer;border:none;transition:all 0.2s;}
+.btn-edit{background:rgba(51,87,255,0.15);color:#7b9fff;border:1px solid rgba(51,87,255,0.3);}
+.btn-edit:hover{background:rgba(51,87,255,0.25);}
+.btn-del{background:rgba(239,68,68,0.1);color:#ef4444;border:1px solid rgba(239,68,68,0.2);}
+.btn-del:hover{background:rgba(239,68,68,0.2);}
+.form-card{background:rgba(10,16,34,0.92);border:1px solid rgba(255,255,255,0.08);border-radius:14px;padding:1.2rem;margin-bottom:1.5rem;}
+.form-card h3{font-size:0.7rem;font-weight:800;letter-spacing:0.12em;text-transform:uppercase;color:rgba(255,255,255,0.4);margin:0 0 0.8rem;}
+.form-row{display:grid;grid-template-columns:120px 1fr;align-items:center;gap:0.5rem;margin-bottom:0.6rem;}
+@media(max-width:600px){.form-row{grid-template-columns:1fr;}}
+.form-row label{font-size:0.75rem;color:rgba(255,255,255,0.6);font-weight:600;}
+.form-row input,.form-row select{background:#0d1528;color:#e8e8f0;border:1px solid rgba(255,255,255,0.1);border-radius:8px;padding:0.5rem 0.8rem;font-size:0.85rem;width:100%;box-sizing:border-box;}
+.form-row input[type="date"]{color-scheme:dark;font-family:'SF Mono','Fira Code','Consolas',monospace;}
+.form-row input:focus,.form-row select:focus{outline:none;border-color:#ffd166;}
+.btn-row{display:flex;gap:0.5rem;margin-top:1rem;flex-wrap:wrap;}
+.btn{padding:0.6rem 1.5rem;border-radius:8px;font-size:0.8rem;font-weight:700;cursor:pointer;border:none;transition:all 0.2s;}
+.btn-primary{background:linear-gradient(180deg,#ffd166,#ffbf00);color:#1a1400;}
+.btn-primary:hover{box-shadow:0 0 12px rgba(255,209,102,0.4);}
+.btn-secondary{background:rgba(255,255,255,0.06);color:rgba(255,255,255,0.7);border:1px solid rgba(255,255,255,0.1);}
+.btn-secondary:hover{background:rgba(255,255,255,0.1);}
+.msg{padding:0.6rem 1rem;border-radius:8px;font-size:0.8rem;margin-top:0.5rem;display:none;}
+.msg.ok{display:block;background:rgba(34,197,94,0.1);color:#22c55e;border:1px solid rgba(34,197,94,0.2);}
+.msg.err{display:block;background:rgba(239,68,68,0.1);color:#ef4444;border:1px solid rgba(239,68,68,0.2);}
+.login-gate{text-align:center;padding:3rem 1rem;}
+.login-gate h2{font-size:1.2rem;margin-bottom:1rem;color:rgba(255,255,255,0.6);}
+.login-form{max-width:320px;margin:0 auto;}
+.login-form input{width:100%;margin-bottom:0.6rem;background:#0d1528;color:#e8e8f0;border:1px solid rgba(255,255,255,0.1);border-radius:8px;padding:0.6rem 1rem;font-size:0.9rem;box-sizing:border-box;}
+.login-form input:focus{outline:none;border-color:#ffd166;}
+</style>
+</head>
+<body data-nav-utility="admin">
+<div class="tt-shell-content" id="main-content">
+
+  <!-- Login gate -->
+  <div id="login-gate" class="login-gate auth-hide">
+    <h2>Admin Login Required</h2>
+    <div class="login-form">
+      <input type="email" id="login-email" placeholder="Email">
+      <input type="password" id="login-pw" placeholder="Password">
+      <button class="btn btn-primary" style="width:100%;" onclick="doLogin()">Sign In</button>
+      <div class="msg" id="login-msg"></div>
+    </div>
+  </div>
+
+  <!-- Admin content (hidden until logged in) -->
+  <div class="auth-required hidden">
+    <div class="page-header">
+      <h1>Admin</h1>
+      <p class="page-subtitle">Manage events and devices</p>
+    </div>
+
+    <div class="admin-header">
+      <select id="admin-device" onchange="onAdminDeviceChange()">
+        <option value="">Select a device...</option>
+      </select>
+    </div>
+
+    <!-- Stats -->
+    <div class="stats-row">
+      <div class="stat-card"><div class="stat-val" id="stat-runs">-</div><div class="stat-label">Total Runs</div></div>
+      <div class="stat-card"><div class="stat-val" id="stat-events">-</div><div class="stat-label">Events</div></div>
+      <div class="stat-card"><div class="stat-val" id="stat-status">-</div><div class="stat-label">Device Status</div></div>
+      <div class="stat-card"><div class="stat-val" id="stat-last">-</div><div class="stat-label">Last Run</div></div>
+    </div>
+
+    <!-- Events Table -->
+    <div class="events-table-wrap">
+      <table class="events-table">
+        <thead><tr><th>Event Name</th><th>Dates</th><th>Runs</th><th>Status</th><th>Actions</th></tr></thead>
+        <tbody id="events-body"><tr><td colspan="5" style="text-align:center;padding:2rem;color:rgba(255,255,255,0.3);">Select a device to view events</td></tr></tbody>
+      </table>
+    </div>
+
+    <!-- Create/Edit Event Form -->
+    <div class="form-card" id="event-form">
+      <h3 id="form-title">Create Event</h3>
+      <input type="hidden" id="edit-id" value="">
+      <div class="form-row"><label>Event Name</label><input type="text" id="evt-name" placeholder="e.g. Gatornationals"></div>
+      <div class="form-row"><label>Start Date</label><input type="date" id="evt-start"></div>
+      <div class="form-row"><label>End Date</label><input type="date" id="evt-end"></div>
+      <div class="form-row"><label>Track Name</label><input type="text" id="evt-track" placeholder="e.g. Gainesville Raceway"></div>
+      <div class="form-row"><label>Promoter</label><input type="text" id="evt-promoter" placeholder="e.g. NHRA"></div>
+      <div class="form-row"><label>Status</label>
+        <select id="evt-status">
+          <option value="active">Active</option>
+          <option value="completed">Completed</option>
+          <option value="draft">Draft</option>
+        </select>
+      </div>
+      <div class="btn-row">
+        <button class="btn btn-primary" onclick="saveEvent()">Save Event</button>
+        <button class="btn btn-secondary" onclick="clearForm()">Clear</button>
+      </div>
+      <div class="msg" id="form-msg"></div>
+    </div>
+
+    <!-- Data Tools -->
+    <div class="form-card">
+      <h3>Data Tools</h3>
+      <p style="font-size:0.75rem;color:rgba(255,255,255,0.4);margin-bottom:0.8rem;">Backfill adds date tags to old runs so they appear in event date ranges.</p>
+      <div class="btn-row">
+        <button class="btn btn-secondary" onclick="runBackfill()">Backfill Run Dates</button>
+      </div>
+      <div class="msg" id="backfill-msg"></div>
+    </div>
+  </div>
+</div>
+
+<script src="/auth.js"></script>
+<script src="/shell.js"></script>
+<script>
+let adminDeviceId = localStorage.getItem("tt-selected-device") || "";
+let adminEvents = [];
+
+async function doLogin() {
+  const email = document.getElementById("login-email").value;
+  const pw = document.getElementById("login-pw").value;
+  const msg = document.getElementById("login-msg");
+  try {
+    await initFirebase();
+    await signIn(email, pw);
+    msg.className = "msg ok"; msg.textContent = "Logged in!";
+    loadAdminDevices();
+  } catch(e) {
+    msg.className = "msg err"; msg.textContent = e.message;
+  }
+}
+
+async function loadAdminDevices() {
+  try {
+    const res = await fetch("/api/tracks");
+    const data = await res.json();
+    const select = document.getElementById("admin-device");
+    select.innerHTML = '<option value="">Select a device...</option>';
+    (data.tracks || data || []).forEach(t => {
+      const opt = document.createElement("option");
+      opt.value = t.deviceId;
+      opt.textContent = (t.name || t.trackName || "Unknown") + (t.online ? " (Online)" : "");
+      if (t.deviceId === adminDeviceId) opt.selected = true;
+      select.appendChild(opt);
+    });
+    if (adminDeviceId) loadAdminData(adminDeviceId);
+  } catch(e) { console.error(e); }
+}
+
+function onAdminDeviceChange() {
+  adminDeviceId = document.getElementById("admin-device").value;
+  localStorage.setItem("tt-selected-device", adminDeviceId);
+  if (adminDeviceId) loadAdminData(adminDeviceId);
+}
+
+async function loadAdminData(deviceId) {
+  // Load events
+  try {
+    const res = await fetch("/api/events?device_id=" + encodeURIComponent(deviceId));
+    const data = await res.json();
+    adminEvents = data.events || data || [];
+    renderEvents(adminEvents);
+    document.getElementById("stat-events").textContent = adminEvents.length;
+  } catch(e) { console.error(e); }
+
+  // Load run stats
+  try {
+    const res = await fetch("/api/runs?device_id=" + encodeURIComponent(deviceId) + "&limit=1");
+    const data = await res.json();
+    const runs = data.races || [];
+    document.getElementById("stat-runs").textContent = data.total_count || runs.length || "0";
+    document.getElementById("stat-last").textContent = runs.length > 0 ? (runs[0].created_date || runs[0].timestamp || "-") : "None";
+  } catch(e) { document.getElementById("stat-runs").textContent = "?"; }
+
+  // Device status
+  try {
+    const { initializeApp } = await import("https://www.gstatic.com/firebasejs/11.1.0/firebase-app.js");
+    const { getDatabase, ref, get } = await import("https://www.gstatic.com/firebasejs/11.1.0/firebase-database.js");
+    const app = initializeApp(FIREBASE_CONFIG);
+    const db = getDatabase(app);
+    const snap = await get(ref(db, "devices/" + deviceId + "/status"));
+    const status = snap.val() || {};
+    document.getElementById("stat-status").textContent = status.online ? "Online" : "Offline";
+    document.getElementById("stat-status").style.color = status.online ? "#22c55e" : "#ef4444";
+  } catch(e) { document.getElementById("stat-status").textContent = "?"; }
+}
+
+function renderEvents(events) {
+  const body = document.getElementById("events-body");
+  if (!events.length) {
+    body.innerHTML = '<tr><td colspan="5" style="text-align:center;padding:2rem;color:rgba(255,255,255,0.3);">No events for this device</td></tr>';
+    return;
+  }
+  let html = "";
+  events.forEach(e => {
+    const status = e.status || "active";
+    const badgeCls = status === "active" ? "badge-active" : status === "completed" ? "badge-completed" : "badge-draft";
+    const dates = (e.start_date || "?") + " to " + (e.end_date || "?");
+    const name = e.name || e.event_name || e.id;
+    const count = e.race_count !== undefined ? e.race_count : "?";
+    html += '<tr>';
+    html += '<td class="evt-name">' + esc(name) + '</td>';
+    html += '<td class="evt-dates">' + esc(dates) + '</td>';
+    html += '<td class="evt-count">' + count + '</td>';
+    html += '<td><span class="badge ' + badgeCls + '">' + status + '</span></td>';
+    html += '<td class="evt-actions">';
+    html += '<button class="btn-edit" onclick="editEvent(\'' + esc(e.id) + '\')">Edit</button>';
+    html += '<button class="btn-del" onclick="deleteEvent(\'' + esc(e.id) + '\',\'' + esc(name).replace(/'/g, "\\'") + '\')">Delete</button>';
+    html += '</td></tr>';
+  });
+  body.innerHTML = html;
+}
+
+function editEvent(id) {
+  const evt = adminEvents.find(e => e.id === id);
+  if (!evt) return;
+  document.getElementById("edit-id").value = id;
+  document.getElementById("form-title").textContent = "Edit Event";
+  document.getElementById("evt-name").value = evt.name || evt.event_name || "";
+  document.getElementById("evt-start").value = evt.start_date || "";
+  document.getElementById("evt-end").value = evt.end_date || "";
+  document.getElementById("evt-track").value = evt.track_name || "";
+  document.getElementById("evt-promoter").value = evt.promoter || "";
+  document.getElementById("evt-status").value = evt.status || "active";
+  document.getElementById("event-form").scrollIntoView({behavior:"smooth"});
+}
+
+async function saveEvent() {
+  const editId = document.getElementById("edit-id").value;
+  const msg = document.getElementById("form-msg");
+  const payload = {
+    name: document.getElementById("evt-name").value,
+    device_id: adminDeviceId,
+    start_date: document.getElementById("evt-start").value,
+    end_date: document.getElementById("evt-end").value,
+    track_name: document.getElementById("evt-track").value,
+    promoter: document.getElementById("evt-promoter").value,
+    status: document.getElementById("evt-status").value,
+  };
+
+  if (!payload.name || !payload.start_date || !payload.end_date) {
+    msg.className = "msg err"; msg.textContent = "Name, start date, and end date are required.";
+    return;
+  }
+  if (!adminDeviceId) {
+    msg.className = "msg err"; msg.textContent = "Select a device first.";
+    return;
+  }
+
+  try {
+    await initFirebase();
+    if (editId) {
+      await apiFetch("/events/" + editId, { method: "PUT", body: payload });
+      msg.className = "msg ok"; msg.textContent = "Event updated!";
+    } else {
+      await apiFetch("/events", { method: "POST", body: payload });
+      msg.className = "msg ok"; msg.textContent = "Event created!";
+    }
+    clearForm();
+    loadAdminData(adminDeviceId);
+  } catch(e) {
+    msg.className = "msg err"; msg.textContent = e.message;
+  }
+}
+
+async function deleteEvent(id, name) {
+  if (!confirm("Delete event \"" + name + "\"?\n\nRuns will NOT be deleted \u2014 only the event label is removed.")) return;
+  try {
+    await initFirebase();
+    await apiFetch("/events/" + id, { method: "DELETE" });
+    loadAdminData(adminDeviceId);
+  } catch(e) { alert("Delete failed: " + e.message); }
+}
+
+function clearForm() {
+  document.getElementById("edit-id").value = "";
+  document.getElementById("form-title").textContent = "Create Event";
+  document.getElementById("evt-name").value = "";
+  document.getElementById("evt-start").value = "";
+  document.getElementById("evt-end").value = "";
+  document.getElementById("evt-track").value = "";
+  document.getElementById("evt-promoter").value = "";
+  document.getElementById("evt-status").value = "active";
+  document.getElementById("form-msg").className = "msg";
+}
+
+async function runBackfill() {
+  const msg = document.getElementById("backfill-msg");
+  if (!adminDeviceId) { msg.className = "msg err"; msg.textContent = "Select a device first."; return; }
+  msg.className = "msg ok"; msg.textContent = "Running backfill...";
+  try {
+    await initFirebase();
+    const data = await apiFetch("/admin/backfill-dates", { method: "POST", body: { device_id: adminDeviceId } });
+    msg.className = "msg ok"; msg.textContent = "Backfill complete: " + (data.updated || 0) + " runs updated.";
+    loadAdminData(adminDeviceId);
+  } catch(e) {
+    msg.className = "msg err"; msg.textContent = "Backfill failed: " + e.message;
+  }
+}
+
+function esc(s) { const d = document.createElement("div"); d.textContent = s || ""; return d.innerHTML; }
+
+// Init
+initFirebase().then(() => { loadAdminDevices(); });
+</script>
+</body>
+</html>

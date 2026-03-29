@@ -1,0 +1,37 @@
+{
+  "indexes": [
+    {
+      "collectionGroup": "tracks",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "online", "order": "ASCENDING" },
+        { "fieldPath": "name", "order": "ASCENDING" }
+      ]
+    },
+    {
+      "collectionGroup": "races",
+      "queryScope": "COLLECTION_GROUP",
+      "fields": [
+        { "fieldPath": "event_id", "order": "ASCENDING" },
+        { "fieldPath": "timestamp_ms", "order": "DESCENDING" }
+      ]
+    },
+    {
+      "collectionGroup": "events",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "device_id", "order": "ASCENDING" },
+        { "fieldPath": "updated_at", "order": "DESCENDING" }
+      ]
+    },
+    {
+      "collectionGroup": "races",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "created_date", "order": "ASCENDING" },
+        { "fieldPath": "timestamp_ms", "order": "DESCENDING" }
+      ]
+    }
+  ],
+  "fieldOverrides": []
+}

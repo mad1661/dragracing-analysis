@@ -1,0 +1,138 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Download - Timing Talk</title>
+  <link rel="stylesheet" href="/styles.css">
+</head>
+<body data-nav-utility="downloads">
+
+  <div class="hero">
+    <h1>Download Timing Talk</h1>
+    <p>The desktop app creates a virtual COM port on your computer, streaming live cloud data as if it were a local serial connection. Your existing software works unchanged.</p>
+  </div>
+
+  <div class="page">
+    <div class="alert alert-info">
+      <strong>Note:</strong> Most users should use the <a href="/docs.html">API</a> or <a href="/apps.html">online apps</a> instead.
+      The desktop app is for legacy software that requires a physical COM/serial port.
+    </div>
+
+    <h2>Download for Your Platform</h2>
+    <div class="card-grid" style="grid-template-columns: repeat(3, 1fr);">
+      <div class="download-card" id="card-win">
+        <div class="platform-icon">&#128187;</div>
+        <h3>Windows</h3>
+        <p>Windows 10 or later. Single .exe installer.</p>
+        <span class="badge badge-new">Coming Soon</span>
+        <p class="text-small text-dim mt-1">Contact us for early access</p>
+      </div>
+      <div class="download-card" id="card-mac">
+        <div class="platform-icon">&#63743;</div>
+        <h3>macOS</h3>
+        <p>macOS 12+ (Apple Silicon).</p>
+        <a href="https://firebasestorage.googleapis.com/v0/b/nhra-timing-api.firebasestorage.app/o/downloads%2FTimingTalk-macOS.dmg?alt=media&token=timing-talk-dmg-v5" class="btn btn-primary" id="dl-mac">Download .dmg</a>
+        <p class="text-small text-dim mt-1">~132 MB &middot; Apple Silicon</p>
+      </div>
+      <div class="download-card" id="card-linux">
+        <div class="platform-icon">&#128039;</div>
+        <h3>Linux</h3>
+        <p>Ubuntu, Debian, Fedora. AppImage format.</p>
+        <span class="badge badge-new">Coming Soon</span>
+        <p class="text-small text-dim mt-1">Contact us for early access</p>
+      </div>
+    </div>
+
+    <h2>How It Works</h2>
+    <div class="card-grid">
+      <div class="card">
+        <h3>1. Install &amp; Sign In</h3>
+        <p>Download and run the app. Sign in with the same account you use on this website.</p>
+      </div>
+      <div class="card">
+        <h3>2. Pick a Track</h3>
+        <p>Browse the live track directory and select the track you want data from.</p>
+      </div>
+      <div class="card">
+        <h3>3. Start the Bridge</h3>
+        <p>The app creates a virtual COM port. Point your existing timing software at it and you're live.</p>
+      </div>
+    </div>
+
+    <h2>Setup Guide</h2>
+    <div class="card">
+      <h3>Windows</h3>
+      <ol style="color:var(--text-dim); font-size:0.9rem; padding-left:1.25rem;">
+        <li>Download and run <code>TimingTalk-Setup.exe</code></li>
+        <li>If Windows SmartScreen appears, click "More Info" then "Run Anyway"</li>
+        <li>The app installs and creates a desktop shortcut</li>
+        <li>Sign in, select a track, click "Start Bridge"</li>
+        <li>A virtual COM port (e.g. <code>COM10</code>) appears in Device Manager</li>
+        <li>Point your timing software to that COM port</li>
+      </ol>
+
+      <h3>macOS</h3>
+      <ol style="color:var(--text-dim); font-size:0.9rem; padding-left:1.25rem;">
+        <li>Download and open <code>TimingTalk.dmg</code></li>
+        <li>Drag the app to your <strong>Applications</strong> folder</li>
+        <li><strong>Important &mdash; before first launch:</strong> Open <strong>Terminal</strong> and run:<br>
+            <code style="display:block;margin:0.5rem 0;padding:0.5rem;background:var(--bg-dark);border-radius:4px;">xattr -cr /Applications/Timing\ Talk.app</code>
+        </li>
+        <li>Now double-click to open, or right-click &rarr; Open if prompted</li>
+        <li>Sign in, select a track, click "Start Bridge"</li>
+        <li>A virtual serial port appears at <code>/dev/pts/...</code></li>
+        <li>Point your timing software to that path</li>
+      </ol>
+
+      <h3>Linux</h3>
+      <ol style="color:var(--text-dim); font-size:0.9rem; padding-left:1.25rem;">
+        <li>Download the AppImage</li>
+        <li>Make it executable: <code>chmod +x TimingTalk.AppImage</code></li>
+        <li>Run: <code>./TimingTalk.AppImage</code></li>
+        <li>Sign in, select a track, click "Start Bridge"</li>
+        <li>Virtual serial port created via <code>socat</code></li>
+      </ol>
+    </div>
+
+    <h2>Troubleshooting</h2>
+    <div class="card">
+      <table>
+        <thead><tr><th>Issue</th><th>Solution</th></tr></thead>
+        <tbody>
+          <tr><td>App won't start</td><td>Make sure you're on a supported OS version. Try running as administrator.</td></tr>
+          <tr><td>Can't see virtual COM port</td><td>Windows: install <a href="https://sourceforge.net/projects/com0com/">com0com</a>. Mac/Linux: install <code>socat</code>.</td></tr>
+          <tr><td>No data streaming</td><td>Check that the selected track is online (green badge on track list).</td></tr>
+          <tr><td>Connection drops</td><td>The app auto-reconnects. Check your internet connection.</td></tr>
+          <tr><td>"Track not found"</td><td>The Pi at that track may be offline. Try refreshing the track list.</td></tr>
+        </tbody>
+      </table>
+    </div>
+
+    <div class="card" style="text-align:center; margin-top:2rem;">
+      <p style="margin:0;">Don't need a COM port? Use the API directly instead.</p>
+      <div class="btn-row" style="justify-content:center;">
+        <a href="/docs.html" class="btn btn-outline">API Docs</a>
+        <a href="/apps.html" class="btn btn-outline">Online Apps</a>
+      </div>
+    </div>
+  </div>
+
+  <div class="footer">Timing Talk &middot; NHRA Timing API</div>
+
+  <script src="/shell.js"></script>
+  <script src="/auth.js"></script>
+  <script>
+    initFirebase();
+
+    (function detectPlatform() {
+      const ua = navigator.userAgent.toLowerCase();
+      let platform = "win";
+      if (ua.includes("mac")) platform = "mac";
+      else if (ua.includes("linux")) platform = "linux";
+      const card = document.getElementById("card-" + platform);
+      if (card) card.style.borderColor = "var(--accent)";
+    })();
+  </script>
+</body>
+</html>

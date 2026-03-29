@@ -1,0 +1,607 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Search / Timeslips — Timing Talk</title>
+<link rel="stylesheet" href="/styles.css">
+<style>
+.search-bar{display:flex;align-items:center;gap:0.75rem;margin-bottom:1rem;flex-wrap:wrap;}
+.toggle-group{display:flex;border:1px solid rgba(255,255,255,0.1);border-radius:8px;overflow:hidden;}
+.toggle-btn{padding:0.45rem 0.9rem;font-size:0.78rem;font-weight:700;border:none;background:rgba(255,255,255,0.04);color:rgba(255,255,255,0.5);cursor:pointer;transition:all 0.15s;}
+.toggle-btn.active{background:rgba(255,209,102,0.15);color:#ffd166;}
+.toggle-btn:hover:not(.active){background:rgba(255,255,255,0.08);}
+.search-wrap{position:relative;flex:1;min-width:200px;}
+.search-input{width:100%;padding:0.5rem 0.85rem;border:1px solid rgba(255,255,255,0.1);border-radius:8px;background:#1a1a2e;color:#e8e8f0;font-size:0.88rem;outline:none;font-family:inherit;}
+.search-input:focus{border-color:rgba(255,209,102,0.4);box-shadow:0 0 0 3px rgba(255,209,102,0.08);}
+.search-input::placeholder{color:rgba(255,255,255,0.3);}
+.autocomplete{position:absolute;top:100%;left:0;right:0;max-height:240px;overflow-y:auto;background:rgba(18,18,31,0.98);border:1px solid rgba(255,255,255,0.12);border-radius:8px;margin-top:2px;z-index:20;display:none;scrollbar-width:thin;scrollbar-color:rgba(255,255,255,0.1) transparent;}
+.autocomplete.show{display:block;}
+.ac-item{padding:0.45rem 0.85rem;font-size:0.82rem;color:rgba(255,255,255,0.7);cursor:pointer;border-bottom:1px solid rgba(255,255,255,0.04);}
+.ac-item:hover,.ac-item.highlighted{background:rgba(255,209,102,0.1);color:#ffd166;}
+.ac-item:last-child{border-bottom:none;}
+.search-meta{font-size:0.72rem;color:rgba(255,255,255,0.4);margin-bottom:0.75rem;}
+
+.res-wrap{background:linear-gradient(180deg,rgba(13,21,43,0.92),rgba(8,13,28,0.98));border:1px solid rgba(255,255,255,0.1);border-radius:16px;overflow:hidden;box-shadow:0 8px 24px rgba(0,0,0,0.3);}
+.res-wrap::before{content:'';display:block;height:2px;background:linear-gradient(90deg,#ff304f,#ffd166,#3357ff);}
+.res-scroll{max-height:calc(100vh - 360px);overflow:auto;scrollbar-width:thin;scrollbar-color:rgba(255,255,255,0.1) transparent;}
+.res-table{width:100%;border-collapse:collapse;font-size:0.65rem;}
+.res-table th{position:sticky;top:0;z-index:2;padding:0.4rem 0.25rem;font-size:0.48rem;font-weight:800;letter-spacing:0.12em;text-transform:uppercase;color:rgba(255,255,255,0.4);background:linear-gradient(180deg,rgba(12,19,40,0.98),rgba(10,16,34,0.95));border-bottom:1px solid rgba(255,255,255,0.1);white-space:nowrap;text-align:center;cursor:pointer;user-select:none;}
+.res-table th:hover{color:rgba(255,255,255,0.7);}
+.res-table td{padding:0.3rem 0.2rem;font-family:'SF Mono','Fira Code','Consolas',monospace;font-weight:600;text-align:center;border-bottom:1px solid rgba(255,255,255,0.04);white-space:nowrap;}
+.res-table tr:hover{background:rgba(255,255,255,0.03);}
+.res-table tr.winner-row{background:rgba(255,209,102,0.08);}
+.res-table tr.winner-row:hover{background:rgba(255,209,102,0.12);}
+.res-table tr.clickable{cursor:pointer;}
+.win-badge{display:inline-block;background:linear-gradient(180deg,#ffd166,#ffe066);color:#1a1400;font-size:0.5rem;font-weight:900;padding:0.12rem 0.3rem;border-radius:4px;letter-spacing:0.06em;}
+.place-badge{display:inline-block;font-size:0.5rem;font-weight:900;padding:0.12rem 0.3rem;border-radius:4px;letter-spacing:0.06em;}
+.place-badge.place-w{background:linear-gradient(180deg,#ffd166,#ffe066);color:#1a1400;}
+.place-badge.place-ru{background:#3357ff;color:#fff;}
+.place-badge.place-3{background:#555;color:#fff;}
+.place-badge.place-4{background:#333;color:#fff;}
+.td-name{max-width:100px;overflow:hidden;text-overflow:ellipsis;font-family:'Oswald','Impact',sans-serif !important;text-align:left !important;}
+.td-name a{color:#e8e8f0;text-decoration:none;}
+.td-name a:hover{color:#ffd166;text-decoration:underline;}
+.td-et{color:#e8e8f0;font-weight:800;font-size:0.82rem;}
+.td-dial{color:#ffd166;}
+.td-class{font-size:0.55rem;color:rgba(255,255,255,0.4);font-weight:500;}
+.td-ts{font-size:0.52rem;color:rgba(255,255,255,0.4);font-weight:500;white-space:nowrap;}
+.no-results{text-align:center;padding:3rem;color:rgba(255,255,255,0.3);font-size:1rem;}
+.no-results a{color:#ffd166;}
+
+/* Timeslip */
+/* Timeslip — white card like a real printed slip */
+.timeslip{margin-top:1.25rem;display:none;max-width:700px;margin-left:auto;margin-right:auto;}
+.timeslip.four-wide{max-width:900px;}
+.timeslip.show{display:block;}
+.ts-card{background:#fff;color:#111;font-family:'SF Mono','Fira Code','Consolas',monospace;font-size:0.82rem;border:2px solid #222;border-radius:6px;overflow:hidden;}
+.ts-header{background:#1a1a1a;color:#fff;padding:0.8rem 1rem;text-align:center;}
+.ts-header-title{font-size:0.95rem;font-weight:900;letter-spacing:0.08em;}
+.ts-header-meta{font-size:0.6rem;color:#888;margin-top:0.2rem;}
+.ts-names{display:flex;border-bottom:2px solid #222;}
+.ts-name-cell{flex:1;padding:0.6rem 0.5rem;text-align:center;}
+.ts-name-cell.win-bg{background:#dcfce7;}
+.ts-name-cell.lose-bg{background:#fff;}
+.ts-name-driver{font-size:0.82rem;font-weight:900;letter-spacing:0.02em;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+.ts-name-info{font-size:0.6rem;color:#888;margin-top:0.15rem;display:flex;justify-content:center;gap:0.4rem;align-items:center;}
+.ts-name-info .car-num{color:#c8102e;font-weight:800;}
+.ts-win-badge{font-size:0.5rem;font-weight:900;background:#16a34a;color:#fff;padding:0.1rem 0.35rem;border-radius:3px;}
+.ts-vs{width:60px;flex-shrink:0;background:#1a1a1a;display:flex;align-items:center;justify-content:center;}
+.ts-vs span{font-size:0.55rem;color:#999;font-weight:800;letter-spacing:0.15em;}
+.ts-divider{width:1px;background:#222;}
+.ts-timing{padding:0.3rem 0.8rem;}
+.ts-trow{display:flex;align-items:center;padding:0.35rem 0;border-bottom:1px dashed #ddd;}
+.ts-trow:last-child{border-bottom:none;}
+.ts-trow.highlight{background:#f8f8f8;margin:0 -0.8rem;padding:0.5rem 0.8rem;border-radius:4px;}
+.ts-trow .ts-left{flex:1;text-align:right;padding-right:0.6rem;}
+.ts-trow .ts-center{width:80px;text-align:center;flex-shrink:0;}
+.ts-trow .ts-right{flex:1;text-align:left;padding-left:0.6rem;}
+.ts-trow .ts-lbl{font-size:0.55rem;color:#888;text-transform:uppercase;letter-spacing:0.1em;font-weight:700;}
+.ts-trow .ts-val{font-weight:800;font-size:0.82rem;}
+.ts-trow.highlight .ts-val{font-size:1.1rem;font-weight:900;}
+.ts-trow .ts-sub{font-size:0.55rem;color:#999;display:block;}
+.ts-trow .ts-empty{color:#ccc;}
+.ts-mov{border-top:1px solid #ddd;padding:0.5rem;text-align:center;font-size:0.65rem;color:#888;}
+.ts-mov span{font-weight:900;color:#111;font-size:0.78rem;margin-left:0.3rem;}
+.ts-footer{background:#1a1a1a;color:#fff;padding:0.5rem 1rem;text-align:center;}
+.ts-footer-meta{font-size:0.55rem;color:#888;}
+.ts-footer-brand{font-size:0.7rem;font-weight:900;letter-spacing:0.15em;margin-top:0.15rem;}
+.timeslip-actions{text-align:center;margin-top:0.75rem;}
+.timeslip-actions button{background:rgba(255,255,255,0.06);border:1px solid rgba(255,255,255,0.1);color:rgba(255,255,255,0.6);padding:0.4rem 1rem;border-radius:6px;font-size:0.75rem;cursor:pointer;font-weight:600;}
+@media print{
+  body{background:#fff!important;color:#000!important;}
+  .tt-shell-sidebar,.tt-shell-toggle,.tt-shell-overlay,.page-header,.search-bar,.toggle-group,.autocomplete-wrap,.res-wrap,.results-meta,.timeslip-actions{display:none!important;}
+  .tt-shell-main,.tt-shell-content{padding:0!important;margin:0!important;}
+  .timeslip{display:block!important;margin:0!important;max-width:100%!important;}
+  .ts-card{border:1px solid #000!important;page-break-inside:avoid;background:#fff!important;}
+  .ts-card *{-webkit-print-color-adjust:exact!important;print-color-adjust:exact!important;}
+  .timeslip-header{background:#333!important;}
+  .timeslip-header h3{color:#000!important;}
+  .timeslip-lanes{display:grid!important;grid-template-columns:1fr 1fr!important;}
+  .timeslip-lane{background:#f9f9f9!important;border:1px solid #ccc!important;}
+  .timeslip-lane.winner{background:#fff8e0!important;border-color:#cc9900!important;}
+  .ts-driver,.ts-val,.ts-label{color:#000!important;}
+  .ts-val.gold{color:#996600!important;}
+  .ts-footer{background:#eee!important;color:#333!important;}
+}
+/* 4-wide timeslip */
+.ts-names-4w{display:grid;grid-template-columns:1fr 1fr 1fr 1fr;border-bottom:2px solid #222;}
+.ts-names-4w .ts-name-cell{border-right:1px solid #ddd;}
+.ts-names-4w .ts-name-cell:last-child{border-right:none;}
+.ts-trow-4w{display:flex;align-items:center;padding:0.35rem 0;border-bottom:1px dashed #ddd;}
+.ts-trow-4w:last-child{border-bottom:none;}
+.ts-trow-4w.highlight{background:#f8f8f8;margin:0 -0.8rem;padding:0.5rem 0.8rem;border-radius:4px;}
+.ts-trow-4w .ts-col{flex:1;text-align:center;}
+.ts-trow-4w .ts-center{width:70px;text-align:center;flex-shrink:0;}
+.ts-win-badge.place-ru{background:#3357ff;}
+.ts-win-badge.place-3{background:#555;}
+.ts-win-badge.place-4{background:#333;}
+.timeslip-actions button:hover{background:rgba(255,255,255,0.1);}
+
+@media (max-width:600px){
+  .timeslip-lanes{grid-template-columns:1fr;}
+  .search-bar{flex-direction:column;align-items:stretch;}
+}
+</style>
+</head>
+<body data-nav-primary="search">
+<div class="tt-shell-content" id="main-content">
+  <div class="page-header">
+    <h1>Search / Timeslips</h1>
+    <p class="page-subtitle">Find runs by racer name or car number</p>
+  </div>
+
+  <div id="no-device" class="no-results" style="display:none;">
+    No device selected. <a href="/event-set.html">Go to Event Set</a>
+  </div>
+
+  <div id="search-content" style="display:none;">
+    <div class="search-bar">
+      <div class="toggle-group">
+        <button class="toggle-btn active" id="btn-name" onclick="setMode('name')">By Name</button>
+        <button class="toggle-btn" id="btn-carnum" onclick="setMode('carnum')">By Car Number</button>
+      </div>
+      <div class="search-wrap">
+        <input type="text" class="search-input" id="search-input" placeholder="Type a racer name..." autocomplete="off">
+        <div class="autocomplete" id="autocomplete"></div>
+      </div>
+    </div>
+
+    <div class="search-meta" id="search-meta"></div>
+    <div id="results-container"></div>
+
+    <div class="timeslip" id="timeslip">
+      <div id="ts-content"></div>
+      <div class="timeslip-actions">
+        <button onclick="window.print()">Print Timeslip</button>
+        <button onclick="closeTimeslip()">Close</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script src="/auth.js"></script>
+<script src="/shell.js"></script>
+<script>
+const deviceId = localStorage.getItem("tt-selected-device") || "";
+const eventId = localStorage.getItem("tt-selected-event") || "";
+
+let allRaces = [];
+let filteredRaces = [];
+let searchMode = "name"; // "name" or "carnum"
+let uniqueNames = [];
+let uniqueCarNums = [];
+let acIndex = -1;
+
+function classifyCategory(cat) {
+  const c = (cat || "").toUpperCase();
+  if (/TOP FUEL|FUNNY CAR|PRO STOCK|PRO MOD|FACTORY STOCK|MOUNTAIN MOTOR|^TF$|^FC$|^PS$|^PSM$|^FX$|TAFC|TAD|AA\/F/.test(c)) return "heads_up";
+  if (/SUPER STOCK|STOCK ELIM|^SS$|^SE$|S\/S|^STK$/.test(c)) return "index";
+  if (/SUPER COMP|SUPER GAS|SUPER STREET|TOP DRAGSTER|TOP SPORTSMAN|COMP ELIM|^SC$|^SG$|^SST$|^TD$|^TS$|^COMP$/.test(c)) return "handicap";
+  return "bracket";
+}
+
+function esc(s) { const d = document.createElement("div"); d.textContent = s || ""; return d.innerHTML; }
+
+function init() {
+  if (!deviceId) {
+    document.getElementById("no-device").style.display = "block";
+    return;
+  }
+  document.getElementById("search-content").style.display = "block";
+  loadData();
+
+  const input = document.getElementById("search-input");
+  input.addEventListener("input", onInput);
+  input.addEventListener("keydown", onKeydown);
+  document.addEventListener("click", function(e) {
+    if (!e.target.closest(".search-wrap")) hideAutocomplete();
+  });
+}
+
+async function loadData() {
+  try {
+    let url;
+    if (eventId && eventId !== "__all__") {
+      url = "/api/events/" + encodeURIComponent(eventId) + "/results";
+    } else {
+      url = "/api/runs?device_id=" + encodeURIComponent(deviceId) + "&limit=2000";
+    }
+    const res = await fetch(url);
+    const data = await res.json();
+    allRaces = data.races || data || [];
+    buildLookups();
+  } catch(e) {
+    console.error("Failed to load data:", e);
+  }
+}
+
+function is4Wide(race) {
+  return !!(race.lane3_name || race.lane4_name || race.lane3_rt || race.lane4_rt || race.lane3_et || race.lane4_et);
+}
+
+function buildLookups() {
+  const names = new Set();
+  const nums = new Set();
+  allRaces.forEach(r => {
+    ["left","right","lane3","lane4"].forEach(side => {
+      const n = r[side + "_name"];
+      const c = r[side + "_car_num"];
+      if (n) names.add(n.trim());
+      if (c) nums.add(String(c).trim());
+    });
+  });
+  uniqueNames = Array.from(names).filter(n => n).sort((a, b) => a.localeCompare(b, undefined, {sensitivity: "base"}));
+  uniqueCarNums = Array.from(nums).filter(n => n).sort((a, b) => {
+    const na = parseInt(a), nb = parseInt(b);
+    if (!isNaN(na) && !isNaN(nb)) return na - nb;
+    return a.localeCompare(b);
+  });
+}
+
+function setMode(mode) {
+  searchMode = mode;
+  document.getElementById("btn-name").classList.toggle("active", mode === "name");
+  document.getElementById("btn-carnum").classList.toggle("active", mode === "carnum");
+  const input = document.getElementById("search-input");
+  input.placeholder = mode === "name" ? "Type a racer name..." : "Type a car number...";
+  input.value = "";
+  hideAutocomplete();
+  document.getElementById("search-meta").textContent = "";
+  document.getElementById("results-container").innerHTML = "";
+  document.getElementById("timeslip").classList.remove("show");
+}
+
+function onInput() {
+  const val = document.getElementById("search-input").value.trim();
+  if (!val) { hideAutocomplete(); return; }
+  const list = searchMode === "name" ? uniqueNames : uniqueCarNums;
+  const lower = val.toLowerCase();
+  const matches = list.filter(item => item.toLowerCase().includes(lower)).slice(0, 20);
+  showAutocomplete(matches);
+}
+
+function showAutocomplete(items) {
+  const el = document.getElementById("autocomplete");
+  acIndex = -1;
+  if (!items.length) { el.classList.remove("show"); el.innerHTML = ""; return; }
+  el.innerHTML = items.map((item, i) => '<div class="ac-item" data-index="' + i + '" onclick="selectItem(\'' + esc(item).replace(/'/g, "\\'") + '\')">' + esc(item) + '</div>').join("");
+  el.classList.add("show");
+}
+
+function hideAutocomplete() {
+  const el = document.getElementById("autocomplete");
+  el.classList.remove("show");
+  el.innerHTML = "";
+  acIndex = -1;
+}
+
+function onKeydown(e) {
+  const el = document.getElementById("autocomplete");
+  const items = el.querySelectorAll(".ac-item");
+  if (!items.length) return;
+
+  if (e.key === "ArrowDown") {
+    e.preventDefault();
+    acIndex = Math.min(acIndex + 1, items.length - 1);
+    updateHighlight(items);
+  } else if (e.key === "ArrowUp") {
+    e.preventDefault();
+    acIndex = Math.max(acIndex - 1, 0);
+    updateHighlight(items);
+  } else if (e.key === "Enter") {
+    e.preventDefault();
+    if (acIndex >= 0 && items[acIndex]) {
+      selectItem(items[acIndex].textContent);
+    } else {
+      // Select first match
+      const val = document.getElementById("search-input").value.trim();
+      if (val) filterAndShow(val);
+    }
+  } else if (e.key === "Escape") {
+    hideAutocomplete();
+  }
+}
+
+function updateHighlight(items) {
+  items.forEach((el, i) => el.classList.toggle("highlighted", i === acIndex));
+  if (items[acIndex]) items[acIndex].scrollIntoView({block: "nearest"});
+}
+
+function selectItem(value) {
+  document.getElementById("search-input").value = value;
+  hideAutocomplete();
+  filterAndShow(value);
+}
+
+function filterAndShow(query) {
+  const q = query.trim().toLowerCase();
+  if (!q) return;
+
+  const sides = ["left","right","lane3","lane4"];
+  if (searchMode === "name") {
+    filteredRaces = allRaces.filter(r =>
+      sides.some(s => r[s + "_name"] && r[s + "_name"].trim().toLowerCase() === q)
+    );
+  } else {
+    filteredRaces = allRaces.filter(r =>
+      sides.some(s => r[s + "_car_num"] && String(r[s + "_car_num"]).trim().toLowerCase() === q)
+    );
+  }
+
+  document.getElementById("search-meta").textContent = filteredRaces.length + " run" + (filteredRaces.length !== 1 ? "s" : "") + " found";
+  renderTable(filteredRaces);
+  document.getElementById("timeslip").classList.remove("show");
+}
+
+function placementBadge(race, side) {
+  if (!race.winner) return '';
+  if (is4Wide(race)) {
+    const sideResult = (race[side + "_result"] || "").toUpperCase();
+    if (sideResult === "W") return '<span class="place-badge place-w">W</span>';
+    if (sideResult === "R") return '<span class="place-badge place-ru">R/U</span>';
+    if (sideResult === "3") return '<span class="place-badge place-3">3RD</span>';
+    if (sideResult === "4") return '<span class="place-badge place-4">4TH</span>';
+    return '';
+  }
+  const w = race.winner.toUpperCase();
+  const sideMap = { left: "LEFT", right: "RIGHT" };
+  if (w === (sideMap[side] || side.toUpperCase())) return '<span class="win-badge">W</span>';
+  return '';
+}
+
+function renderTable(races) {
+  const el = document.getElementById("results-container");
+  if (!races.length) { el.innerHTML = '<div class="no-results">No runs found</div>'; return; }
+
+  let html = '<div class="res-wrap"><div class="res-scroll"><table class="res-table">';
+  html += '<thead><tr><th></th><th>Time</th><th>Cat</th><th>Rnd</th><th>Car#</th><th>Driver</th><th>Class</th><th>R/T</th><th>60ft</th><th>330ft</th><th>660ft</th><th>660mph</th><th>1000ft</th><th>1000mph</th><th>E.T.</th><th>MPH</th><th>MOV</th><th>W</th><th>Lane</th><th>Dial</th></tr></thead><tbody>';
+
+  races.forEach((r, raceIdx) => {
+    if (is4Wide(r)) {
+      const lanes = [
+        { side: "left", label: "L1" },
+        { side: "right", label: "L2" },
+        { side: "lane3", label: "L3" },
+        { side: "lane4", label: "L4" },
+      ];
+      lanes.forEach((l, i) => {
+        const badge = placementBadge(r, l.side);
+        const isWin = badge.includes("place-w");
+        html += rRow(r, l.side, isWin, l.label, raceIdx, i === 0 ? 4 : 0, badge);
+      });
+    } else {
+      const lw = r.winner && r.winner.toUpperCase() === "LEFT";
+      const rw = r.winner && r.winner.toUpperCase() === "RIGHT";
+      html += rRow(r, "left", lw, "L", raceIdx, 2);
+      html += rRow(r, "right", rw, "R", raceIdx, 0);
+    }
+  });
+
+  html += '</tbody></table></div></div>';
+  el.innerHTML = html;
+}
+
+function rRow(race, side, isWin, lane, raceIdx, slipRowspan, badgeHtml) {
+  const p = side + "_";
+  const cls = isWin ? ' class="winner-row clickable"' : ' class="clickable"';
+  const w = badgeHtml !== undefined ? badgeHtml : (isWin ? '<span class="win-badge">W</span>' : '');
+  const nameVal = race[p+"name"] || "";
+  const nameLink = nameVal ? '<a href="/racer.html?name=' + encodeURIComponent(nameVal) + '">' + esc(nameVal) + '</a>' : '';
+  let h = '<tr' + cls + '>';
+  if (slipRowspan > 0) {
+    h += '<td rowspan="' + slipRowspan + '" style="vertical-align:middle;text-align:center;padding:0.2rem;"><button onclick="showTimeslip(' + raceIdx + ')" style="background:#ffd166;color:#1a1400;border:none;border-radius:4px;padding:0.2rem 0.4rem;font-size:0.55rem;font-weight:800;cursor:pointer;white-space:nowrap;">SLIP</button></td>';
+  }
+  h += '<td class="td-ts">' + esc(race.created_date || '') + ' ' + esc(race.timestamp) + '</td>';
+  h += '<td class="td-class">' + esc(race.category) + '</td>';
+  h += '<td>' + esc(race.round) + '</td>';
+  h += '<td>' + esc(race[p+"car_num"]) + '</td>';
+  h += '<td class="td-name">' + nameLink + '</td>';
+  h += '<td class="td-class">' + esc(race[p+"class"]) + '</td>';
+  h += '<td>' + esc(race[p+"rt"]) + '</td>';
+  h += '<td>' + esc(race[p+"sixty"]) + '</td>';
+  h += '<td>' + esc(race[p+"three30"]) + '</td>';
+  h += '<td>' + esc(race[p+"six60"]) + '</td>';
+  h += '<td>' + esc(race[p+"six60_speed"]) + '</td>';
+  h += '<td>' + esc(race[p+"thousand"]) + '</td>';
+  h += '<td>' + esc(race[p+"thousand_speed"]) + '</td>';
+  h += '<td class="td-et">' + esc(race[p+"et"]) + '</td>';
+  h += '<td>' + esc(race[p+"speed"]) + '</td>';
+  h += '<td class="td-dial">' + esc(race[p+"mov"]) + '</td>';
+  h += '<td style="text-align:center;">' + w + '</td>';
+  h += '<td>' + lane + '</td>';
+  h += '<td class="td-dial">' + esc(race[p+"dial"]) + '</td>';
+  h += '</tr>';
+  return h;
+}
+
+function showTimeslip(raceIdx) {
+  const race = filteredRaces[raceIdx];
+  if (!race) return;
+  const ts = document.getElementById("timeslip");
+
+  if (is4Wide(race)) {
+    ts.classList.add("four-wide");
+    show4WideTimeslip(race);
+  } else {
+    ts.classList.remove("four-wide");
+    show2WideTimeslip(race);
+  }
+
+  ts.classList.add("show");
+  ts.scrollIntoView({behavior: "smooth", block: "nearest"});
+}
+
+function show2WideTimeslip(race) {
+  const lw = race.winner && race.winner.toUpperCase() === "LEFT";
+  const rw = race.winner && race.winner.toUpperCase() === "RIGHT";
+
+  function f(v) { return v && v !== "" ? v : "-.---"; }
+  function fm(v) { return v && v !== "" ? v : "--.--"; }
+
+  let h = '<div class="ts-card">';
+  h += '<div class="ts-header">';
+  h += '<div class="ts-header-title">' + esc(race.category || "RACE") + '</div>';
+  h += '<div class="ts-header-meta">' + esc(race.created_date || "") + ' &bull; Round ' + esc(race.round || "-") + '</div>';
+  h += '</div>';
+
+  h += '<div class="ts-names">';
+  h += '<div class="ts-name-cell ' + (lw ? "win-bg" : "lose-bg") + '">';
+  h += '<div class="ts-name-driver">' + esc(race.left_name || "—") + '</div>';
+  h += '<div class="ts-name-info"><span class="car-num">#' + esc(race.left_car_num || "-") + '</span><span>L</span>';
+  if (lw) h += '<span class="ts-win-badge">WIN</span>';
+  h += '</div></div>';
+  h += '<div class="ts-divider"></div>';
+  h += '<div class="ts-vs"><span>VS</span></div>';
+  h += '<div class="ts-divider"></div>';
+  h += '<div class="ts-name-cell ' + (rw ? "win-bg" : "lose-bg") + '">';
+  h += '<div class="ts-name-driver">' + esc(race.right_name || "—") + '</div>';
+  h += '<div class="ts-name-info"><span class="car-num">#' + esc(race.right_car_num || "-") + '</span><span>R</span>';
+  if (rw) h += '<span class="ts-win-badge">WIN</span>';
+  h += '</div></div>';
+  h += '</div>';
+
+  h += '<div class="ts-timing">';
+  h += tsRow2("Dial-In", f(race.left_dial), f(race.right_dial));
+  h += tsRow2("R/T", f(race.left_rt), f(race.right_rt), true);
+  h += tsRow2("60'", f(race.left_sixty), f(race.right_sixty));
+  h += tsRow2("330'", f(race.left_three30), f(race.right_three30));
+  h += tsRow2("660' (\u215B mi)", f(race.left_six60), f(race.right_six60), false, fm(race.left_six60_speed) + " mph", fm(race.right_six60_speed) + " mph");
+  h += tsRow2("1000'", f(race.left_thousand), f(race.right_thousand), false, fm(race.left_thousand_speed) + " mph", fm(race.right_thousand_speed) + " mph");
+  h += tsRow2("ET (\u00BC mi)", f(race.left_et), f(race.right_et), true, fm(race.left_speed) + " mph", fm(race.right_speed) + " mph", true);
+  h += '</div>';
+
+  const mov = race.left_mov || race.right_mov || race.margin;
+  if (mov) {
+    h += '<div class="ts-mov">Margin of Victory:<span>' + esc(mov) + '</span></div>';
+  }
+
+  h += '<div class="ts-footer">';
+  h += '<div class="ts-footer-meta">' + esc(race.timestamp || "") + (race.left_class ? ' | ' + esc(race.left_class) : '') + '</div>';
+  h += '<div class="ts-footer-brand">TIMING TALK</div>';
+  h += '</div>';
+  h += '</div>';
+
+  document.getElementById("ts-content").innerHTML = h;
+}
+
+function show4WideTimeslip(race) {
+  function f(v) { return v && v !== "" ? v : "-.---"; }
+  function fm(v) { return v && v !== "" ? v : "--.--"; }
+
+  const lanes = [
+    { side: "left", label: "Lane 1" },
+    { side: "right", label: "Lane 2" },
+    { side: "lane3", label: "Lane 3" },
+    { side: "lane4", label: "Lane 4" },
+  ];
+
+  function getPlacement(side) {
+    const res = (race[side + "_result"] || "").toUpperCase();
+    if (res === "W") return { cls: "win-bg", badge: '<span class="ts-win-badge">WIN</span>', label: "W" };
+    if (res === "R") return { cls: "win-bg", badge: '<span class="ts-win-badge place-ru">R/U</span>', label: "R/U" };
+    if (res === "3") return { cls: "lose-bg", badge: '<span class="ts-win-badge place-3">3RD</span>', label: "3RD" };
+    if (res === "4") return { cls: "lose-bg", badge: '<span class="ts-win-badge place-4">4TH</span>', label: "4TH" };
+    return { cls: "lose-bg", badge: "", label: "" };
+  }
+
+  let h = '<div class="ts-card">';
+  // Header
+  h += '<div class="ts-header">';
+  h += '<div class="ts-header-title">4-WIDE: ' + esc(race.category || "RACE") + '</div>';
+  h += '<div class="ts-header-meta">' + esc(race.created_date || "") + ' &bull; Round ' + esc(race.round || "-") + '</div>';
+  h += '</div>';
+
+  // Driver names - 4 columns
+  h += '<div class="ts-names-4w">';
+  lanes.forEach(l => {
+    const p = l.side + "_";
+    const pl = getPlacement(l.side);
+    h += '<div class="ts-name-cell ' + pl.cls + '">';
+    h += '<div class="ts-name-driver">' + esc(race[p+"name"] || "—") + '</div>';
+    h += '<div class="ts-name-info"><span class="car-num">#' + esc(race[p+"car_num"] || "-") + '</span><span>' + l.label + '</span>';
+    h += pl.badge;
+    h += '</div></div>';
+  });
+  h += '</div>';
+
+  // Timing rows - 4 value columns with center label
+  h += '<div class="ts-timing">';
+  const fields = [
+    { label: "Dial-In", key: "dial", bold: false },
+    { label: "R/T", key: "rt", bold: true },
+    { label: "60'", key: "sixty", bold: false },
+    { label: "330'", key: "three30", bold: false },
+    { label: "660'", key: "six60", bold: false, subKey: "six60_speed", subSuffix: " mph" },
+    { label: "1000'", key: "thousand", bold: false, subKey: "thousand_speed", subSuffix: " mph" },
+    { label: "E.T.", key: "et", bold: true, subKey: "speed", subSuffix: " mph", highlight: true },
+  ];
+
+  fields.forEach(fld => {
+    const hlCls = fld.highlight ? " highlight" : "";
+    h += '<div class="ts-trow-4w' + hlCls + '">';
+    // Lane 1 value
+    h += '<div class="ts-col"><span class="ts-val"' + (fld.bold ? ' style="font-weight:900;"' : '') + '>' + f(race["left_" + fld.key]) + '</span>';
+    if (fld.subKey) h += '<span class="ts-sub">' + fm(race["left_" + fld.subKey]) + (fld.subSuffix || "") + '</span>';
+    h += '</div>';
+    // Lane 2 value
+    h += '<div class="ts-col"><span class="ts-val"' + (fld.bold ? ' style="font-weight:900;"' : '') + '>' + f(race["right_" + fld.key]) + '</span>';
+    if (fld.subKey) h += '<span class="ts-sub">' + fm(race["right_" + fld.subKey]) + (fld.subSuffix || "") + '</span>';
+    h += '</div>';
+    // Center label
+    h += '<div class="ts-center"><span class="ts-lbl">' + fld.label + '</span></div>';
+    // Lane 3 value
+    h += '<div class="ts-col"><span class="ts-val"' + (fld.bold ? ' style="font-weight:900;"' : '') + '>' + f(race["lane3_" + fld.key]) + '</span>';
+    if (fld.subKey) h += '<span class="ts-sub">' + fm(race["lane3_" + fld.subKey]) + (fld.subSuffix || "") + '</span>';
+    h += '</div>';
+    // Lane 4 value
+    h += '<div class="ts-col"><span class="ts-val"' + (fld.bold ? ' style="font-weight:900;"' : '') + '>' + f(race["lane4_" + fld.key]) + '</span>';
+    if (fld.subKey) h += '<span class="ts-sub">' + fm(race["lane4_" + fld.subKey]) + (fld.subSuffix || "") + '</span>';
+    h += '</div>';
+    h += '</div>';
+  });
+  h += '</div>';
+
+  // MOV
+  const mov = race.left_mov || race.right_mov || race.lane3_mov || race.lane4_mov || race.margin;
+  if (mov) {
+    h += '<div class="ts-mov">Margin of Victory:<span>' + esc(mov) + '</span></div>';
+  }
+
+  // Footer
+  h += '<div class="ts-footer">';
+  h += '<div class="ts-footer-meta">' + esc(race.timestamp || "") + ' | 4-WIDE' + (race.left_class ? ' | ' + esc(race.left_class) : '') + '</div>';
+  h += '<div class="ts-footer-brand">TIMING TALK</div>';
+  h += '</div>';
+  h += '</div>';
+
+  document.getElementById("ts-content").innerHTML = h;
+}
+
+function tsRow2(label, leftVal, rightVal, bold, leftSub, rightSub, highlight) {
+  const cls = highlight ? " highlight" : "";
+  const vCls = bold ? ' style="font-weight:900;"' : '';
+  let h = '<div class="ts-trow' + cls + '">';
+  h += '<div class="ts-left"><span class="ts-val"' + vCls + '>' + leftVal + '</span>';
+  if (leftSub) h += '<span class="ts-sub">' + leftSub + '</span>';
+  h += '</div>';
+  h += '<div class="ts-center"><span class="ts-lbl">' + label + '</span></div>';
+  h += '<div class="ts-right"><span class="ts-val"' + vCls + '>' + rightVal + '</span>';
+  if (rightSub) h += '<span class="ts-sub">' + rightSub + '</span>';
+  h += '</div>';
+  h += '</div>';
+  return h;
+}
+
+function closeTimeslip() {
+  document.getElementById("timeslip").classList.remove("show");
+}
+
+function printTimeslip() {
+  window.print();
+}
+
+init();
+</script>
+</body>
+</html>

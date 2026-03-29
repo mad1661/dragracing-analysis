@@ -1,0 +1,818 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Schedule — Timing Talk</title>
+<link rel="stylesheet" href="/styles.css">
+<style>
+/* Day Tabs */
+.day-tabs{display:flex;gap:0.5rem;margin-bottom:1.25rem;flex-wrap:wrap;}
+.day-tab{padding:0.45rem 1rem;border-radius:8px;font-size:0.75rem;font-weight:700;letter-spacing:0.04em;cursor:pointer;border:1px solid rgba(255,255,255,0.1);background:rgba(10,16,34,0.7);color:rgba(255,255,255,0.5);transition:all 0.15s;user-select:none;}
+.day-tab:hover{background:rgba(255,255,255,0.06);color:rgba(255,255,255,0.8);}
+.day-tab.active{background:rgba(255,209,102,0.12);border-color:rgba(255,209,102,0.4);color:#ffd166;}
+
+/* Summary Stats */
+.stats-row{display:grid;grid-template-columns:repeat(5,1fr);gap:0.75rem;margin-bottom:1.5rem;}
+.stat-card{background:rgba(10,16,34,0.92);border:1px solid rgba(255,255,255,0.08);border-radius:12px;padding:0.8rem;text-align:center;}
+.stat-val{font-size:1.4rem;font-weight:900;font-family:'Oswald','Impact',sans-serif;color:#ffd166;}
+.stat-label{font-size:0.55rem;font-weight:700;letter-spacing:0.1em;text-transform:uppercase;color:rgba(255,255,255,0.4);margin-top:0.15rem;}
+
+/* Schedule Card / Table */
+.sched-card{background:rgba(10,16,34,0.92);border:1px solid rgba(255,255,255,0.08);border-radius:14px;overflow:hidden;margin-bottom:1.25rem;}
+.sched-card::before{content:'';display:block;height:2px;background:linear-gradient(90deg,#ff304f,#ffd166,#3357ff);}
+
+/* Day Header Bar */
+.sched-day-header{display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:0.5rem 1.5rem;padding:0.65rem 0.9rem;background:rgba(255,48,79,0.85);border-bottom:1px solid rgba(255,255,255,0.08);}
+.sched-day-left{display:flex;flex-direction:column;gap:0.1rem;}
+.sched-day-date{font-size:0.82rem;font-weight:800;font-family:'Oswald','Impact',sans-serif;color:#fff;letter-spacing:0.03em;}
+.sched-day-time{font-size:0.65rem;color:rgba(255,255,255,0.8);font-weight:600;}
+.sched-day-right{display:flex;gap:1rem;flex-wrap:wrap;align-items:center;}
+.sched-day-stat{display:flex;flex-direction:column;align-items:center;gap:0;}
+.sched-day-stat-val{font-size:0.78rem;font-weight:900;font-family:'Oswald','Impact',sans-serif;color:#fff;}
+.sched-day-stat-label{font-size:0.45rem;font-weight:700;letter-spacing:0.1em;text-transform:uppercase;color:rgba(255,255,255,0.7);}
+
+/* Table overflow container */
+.sched-scroll{overflow-x:auto;scrollbar-width:thin;scrollbar-color:rgba(255,255,255,0.1) transparent;}
+.sched-table{width:100%;border-collapse:collapse;font-size:0.72rem;min-width:760px;}
+.sched-table th{padding:0.5rem 0.4rem;font-size:0.5rem;font-weight:800;letter-spacing:0.1em;text-transform:uppercase;color:rgba(255,255,255,0.4);background:rgba(12,19,40,0.98);border-bottom:1px solid rgba(255,255,255,0.1);text-align:left;white-space:nowrap;}
+.sched-table td{padding:0.45rem 0.4rem;border-bottom:1px solid rgba(255,255,255,0.04);font-family:'SF Mono','Fira Code','Consolas',monospace;}
+.sched-table tr:hover{background:rgba(255,255,255,0.03);}
+.sched-cat{font-family:'Oswald','Impact',sans-serif;font-weight:700;color:#e8e8f0;white-space:nowrap;}
+.sched-cat a{color:#e8e8f0;text-decoration:none;transition:color 0.15s;}
+.sched-cat a:hover{color:#ffd166;text-decoration:underline;}
+.sched-round-pill{display:inline-block;padding:0.12rem 0.45rem;border-radius:999px;font-size:0.6rem;font-weight:800;letter-spacing:0.04em;background:rgba(51,87,255,0.18);color:#7b9bff;white-space:nowrap;}
+.sched-round-pill.round-final{background:rgba(255,209,102,0.15);color:#ffd166;}
+.sched-round-pill.round-tt{background:rgba(255,255,255,0.08);color:rgba(255,255,255,0.5);}
+.sched-time{color:#ffd166;font-weight:600;white-space:nowrap;}
+.sched-num{text-align:center;}
+.sched-duration{text-align:center;color:rgba(255,255,255,0.6);}
+.sched-pace{text-align:center;font-size:0.65rem;color:rgba(255,255,255,0.4);}
+.sched-expected{text-align:center;font-size:0.6rem;color:rgba(255,255,255,0.3);}
+.pace-fast{color:#22c55e !important;}
+.pace-slow{color:#ef4444 !important;}
+.pace-ok{color:#ffd166 !important;}
+
+/* Downtime Row */
+.sched-gap{background:rgba(255,209,102,0.04);border-left:3px solid rgba(255,209,102,0.3);}
+.sched-gap td{color:rgba(255,209,102,0.6);font-style:italic;font-size:0.65rem;padding:0.35rem 0.4rem;}
+.gap-icon{margin-right:0.3rem;}
+
+/* Plan rows (projected but not yet run) */
+.sched-plan-row{background:rgba(91,138,245,0.04);border-left:3px solid rgba(91,138,245,0.25);}
+.sched-plan-row td{color:rgba(91,138,245,0.7);font-style:italic;}
+.sched-plan-row .sched-cat{color:rgba(91,138,245,0.8);}
+.sched-plan-row .sched-time{color:rgba(91,138,245,0.6);}
+.sched-plan-break{background:rgba(255,209,102,0.03);border-left:3px solid rgba(255,209,102,0.15);}
+.sched-plan-break td{color:rgba(255,209,102,0.5);font-style:italic;font-size:0.65rem;}
+.sched-edit-link{font-size:0.6rem;font-weight:700;color:#5b8af5;text-decoration:none;transition:color 0.15s;margin-left:0.75rem;}
+.sched-edit-link:hover{color:#ffd166;text-decoration:underline;}
+
+/* Toggle Downtime */
+.toggle-row{display:flex;align-items:center;gap:0.5rem;margin-bottom:1rem;}
+.toggle-label{font-size:0.7rem;color:rgba(255,255,255,0.5);cursor:pointer;display:flex;align-items:center;gap:0.3rem;}
+.toggle-label input{accent-color:#ffd166;}
+
+/* Empty / Loading States */
+.no-data{text-align:center;padding:3rem;color:rgba(255,255,255,0.3);}
+.no-data a{color:#ffd166;}
+.loading{text-align:center;padding:2rem;color:rgba(255,255,255,0.3);}
+.spinner{display:inline-block;width:20px;height:20px;border:2px solid rgba(255,255,255,0.1);border-top-color:#ffd166;border-radius:50%;animation:spin 0.6s linear infinite;margin-right:0.5rem;vertical-align:middle;}
+@keyframes spin{to{transform:rotate(360deg);}}
+
+/* Responsive */
+@media(max-width:768px){
+  .stats-row{grid-template-columns:repeat(2,1fr);}
+  .stats-row .stat-card:last-child{grid-column:span 2;}
+  .sched-day-header{flex-direction:column;align-items:flex-start;}
+  .sched-day-right{gap:0.6rem;}
+}
+@media(min-width:769px) and (max-width:1024px){
+  .stats-row{grid-template-columns:repeat(5,1fr);}
+}
+</style>
+</head>
+<body data-nav-primary="schedule">
+<div class="tt-shell-content" id="main-content">
+  <div class="page-header">
+    <h1>Race Schedule</h1>
+    <p class="page-subtitle">Session timeline computed from run timestamps</p>
+  </div>
+  <div id="no-device" class="no-data" style="display:none;">No device selected. <a href="/event-set.html">Go to Event Set</a></div>
+  <div id="loading-msg" class="loading" style="display:none;"><span class="spinner"></span>Loading schedule data...</div>
+  <div id="content" style="display:none;">
+    <div class="day-tabs" id="day-tabs"></div>
+    <div class="stats-row" id="summary-stats"></div>
+    <div class="toggle-row">
+      <label class="toggle-label"><input type="checkbox" id="show-downtime" checked> Show downtime gaps</label>
+    </div>
+    <div id="schedule-container"></div>
+  </div>
+</div>
+<script src="/auth.js"></script>
+<script src="/shell.js"></script>
+<script>
+(function() {
+  var deviceId = localStorage.getItem("tt-selected-device") || "";
+  var eventId  = localStorage.getItem("tt-selected-event") || "";
+
+  var SESSION_GAP_MIN    = 10;  // >10 min gap in same cat+round = new session
+  var DOWNTIME_THRESHOLD = 2;   // >=2 min gap between sessions = downtime
+
+  var allRaces    = [];
+  var selectedDay = null;
+  var showDowntime = true;
+  var dayPlans    = {}; // { "2026-03-26": { startTime, entries, ... } }
+
+  // ── Helpers ──────────────────────────────────────────────────────────────
+
+  function esc(s) {
+    var d = document.createElement("div");
+    d.textContent = s || "";
+    return d.innerHTML;
+  }
+
+  function tsToMin(ts) {
+    if (!ts) return -1;
+    var p = ts.split(":");
+    if (p.length < 2) return -1;
+    return parseInt(p[0], 10) * 60 + parseInt(p[1], 10) + (p[2] ? parseInt(p[2], 10) / 60 : 0);
+  }
+
+  function tsToSec(ts) {
+    if (!ts) return -1;
+    var p = ts.split(":");
+    if (p.length < 2) return -1;
+    return parseInt(p[0], 10) * 3600 + parseInt(p[1], 10) * 60 + (p[2] ? parseInt(p[2], 10) : 0);
+  }
+
+  function fmtTime12(ts) {
+    if (!ts) return "-";
+    var p = ts.split(":");
+    if (p.length < 2) return ts;
+    var h = parseInt(p[0], 10), m = p[1], s = p[2] || "00";
+    var ampm = h >= 12 ? "PM" : "AM";
+    h = h % 12 || 12;
+    return h + ":" + m + ":" + s + " " + ampm;
+  }
+
+  function fmtTimeShort(ts) {
+    if (!ts) return "-";
+    var p = ts.split(":");
+    if (p.length < 2) return ts;
+    var h = parseInt(p[0], 10), m = p[1];
+    var ampm = h >= 12 ? "PM" : "AM";
+    h = h % 12 || 12;
+    return h + ":" + m + " " + ampm;
+  }
+
+  function fmtDuration(minutes) {
+    if (minutes <= 0) return "<1m";
+    minutes = Math.round(minutes);
+    if (minutes < 60) return minutes + "m";
+    var h = Math.floor(minutes / 60), m = minutes % 60;
+    return m > 0 ? h + "h " + m + "m" : h + "h";
+  }
+
+  function fmtPerPair(durationMin, pairs) {
+    if (pairs <= 1 || durationMin <= 0) return "\u2014";
+    var totalSec = Math.round((durationMin * 60) / (pairs - 1));
+    var m = Math.floor(totalSec / 60), s = totalSec % 60;
+    return m + "m " + String(s).padStart(2, "0") + "s";
+  }
+
+  function fmtDateLabel(dateStr) {
+    if (!dateStr) return "Unknown";
+    var parts = dateStr.split("-");
+    if (parts.length !== 3) return dateStr;
+    var d = new Date(parseInt(parts[0], 10), parseInt(parts[1], 10) - 1, parseInt(parts[2], 10));
+    return d.toLocaleDateString("en-US", { weekday: "short", month: "short", day: "numeric" });
+  }
+
+  function fmtDateFull(dateStr) {
+    if (!dateStr) return "Unknown";
+    var parts = dateStr.split("-");
+    if (parts.length !== 3) return dateStr;
+    var d = new Date(parseInt(parts[0], 10), parseInt(parts[1], 10) - 1, parseInt(parts[2], 10));
+    return d.toLocaleDateString("en-US", { weekday: "long", month: "long", day: "numeric", year: "numeric" });
+  }
+
+  function todayStr() {
+    var d = new Date();
+    var mm = String(d.getMonth() + 1).padStart(2, "0");
+    var dd = String(d.getDate()).padStart(2, "0");
+    return d.getFullYear() + "-" + mm + "-" + dd;
+  }
+
+  function roundLabel(r) {
+    if (!r) return "?";
+    var up = r.toUpperCase();
+    if (up === "T") return "TT";
+    if (up === "Q") return "Q";
+    if (/^Q\d+$/i.test(r)) return "Q-" + r.slice(1);
+    if (/^E\d+$/i.test(r)) return "R-" + r.slice(1);
+    if (up === "F" || up === "FINAL") return "Final";
+    if (up.startsWith("TT")) return r;
+    return r;
+  }
+
+  function roundPillClass(label) {
+    if (label === "Final") return "round-final";
+    if (label === "TT") return "round-tt";
+    return "";
+  }
+
+  function statCard(val, label) {
+    return '<div class="stat-card"><div class="stat-val">' + esc(String(val)) + '</div><div class="stat-label">' + esc(label) + '</div></div>';
+  }
+
+  function categoryLink(cat) {
+    var href = "/results.html?category=" + encodeURIComponent(cat);
+    return '<a href="' + esc(href) + '">' + esc(cat) + '</a>';
+  }
+
+  // ── Class Setup Integration ─────────────────────────────────────────────
+
+  var raceClasses = [];
+
+  async function loadClassesFromAPI() {
+    try {
+      var res = await fetch("/api/race-classes");
+      if (res.ok) {
+        var data = await res.json();
+        if (data.classes && data.classes.length) {
+          raceClasses = data.classes;
+          return;
+        }
+      }
+    } catch(e) { console.warn("API class load failed, using cache:", e); }
+    // Fallback to localStorage
+    try {
+      var raw = localStorage.getItem("tt-race-classes");
+      if (raw) raceClasses = JSON.parse(raw);
+    } catch(e) {}
+  }
+
+  function findClassPerPair(category) {
+    if (!category || !raceClasses.length) return null;
+    var norm = (category || "").toUpperCase().trim();
+    // Exact match first
+    for (var i = 0; i < raceClasses.length; i++) {
+      if ((raceClasses[i].name || "").toUpperCase().trim() === norm) return raceClasses[i].perPairSec;
+    }
+    // Partial match (category contains class name or vice versa)
+    for (var i = 0; i < raceClasses.length; i++) {
+      var cn = (raceClasses[i].name || "").toUpperCase().trim();
+      if (cn && (norm.indexOf(cn) !== -1 || cn.indexOf(norm) !== -1)) return raceClasses[i].perPairSec;
+    }
+    return null;
+  }
+
+  function fmtSecAsTime(sec) {
+    if (!sec || sec <= 0) return "\u2014";
+    var m = Math.floor(sec / 60), s = sec % 60;
+    return m + "m " + String(s).padStart(2, "0") + "s";
+  }
+
+  function paceClass(actualSec, expectedSec) {
+    if (!actualSec || !expectedSec || actualSec <= 0 || expectedSec <= 0) return "";
+    var diff = actualSec - expectedSec;
+    var pct = diff / expectedSec;
+    if (pct < -0.05) return "pace-fast";   // >5% faster than expected
+    if (pct > 0.10) return "pace-slow";    // >10% slower than expected
+    return "pace-ok";                       // within range
+  }
+
+  // ── Session Builder ──────────────────────────────────────────────────────
+
+  function buildSessionsForDay(dayRaces) {
+    // Group by category + round
+    var grouped = {};
+    dayRaces.forEach(function(r) {
+      if (!r.timestamp) return;
+      var key = (r.category || "Unknown") + "|||" + (r.round || "?");
+      if (!grouped[key]) grouped[key] = { category: r.category || "Unknown", round: r.round || "?", runs: [] };
+      grouped[key].runs.push(r);
+    });
+
+    var sessions = [];
+
+    Object.keys(grouped).forEach(function(key) {
+      var g = grouped[key];
+      if (!g.runs.length) return;
+
+      // Sort by timestamp
+      g.runs.sort(function(a, b) { return (a.timestamp || "").localeCompare(b.timestamp || ""); });
+
+      // Split into sessions with 10-minute gap threshold
+      var current = [g.runs[0]];
+      for (var i = 1; i < g.runs.length; i++) {
+        var prevMin = tsToMin(g.runs[i - 1].timestamp);
+        var curMin  = tsToMin(g.runs[i].timestamp);
+        if (prevMin >= 0 && curMin >= 0 && (curMin - prevMin) > SESSION_GAP_MIN) {
+          // Push current session and start new one
+          sessions.push(makeSession(g.category, g.round, current));
+          current = [g.runs[i]];
+        } else {
+          current.push(g.runs[i]);
+        }
+      }
+      if (current.length) {
+        sessions.push(makeSession(g.category, g.round, current));
+      }
+    });
+
+    // Sort all sessions by start time
+    sessions.sort(function(a, b) { return a.startMin - b.startMin || a.startTs.localeCompare(b.startTs); });
+    return sessions;
+  }
+
+  function makeSession(category, round, runs) {
+    var first = runs[0].timestamp;
+    var last  = runs[runs.length - 1].timestamp;
+    var startMin = tsToMin(first);
+    var endMin   = tsToMin(last);
+    var dur = Math.max(0, endMin - startMin);
+    return {
+      category: category,
+      round: round,
+      pairCount: runs.length,
+      startTs: first,
+      endTs: last,
+      startMin: startMin,
+      endMin: endMin,
+      durationMin: dur
+    };
+  }
+
+  // ── Downtime Calculation ─────────────────────────────────────────────────
+
+  function calcDowntime(sessions) {
+    var total = 0;
+    for (var i = 1; i < sessions.length; i++) {
+      var gap = sessions[i].startMin - sessions[i - 1].endMin;
+      if (gap >= DOWNTIME_THRESHOLD) total += gap;
+    }
+    return total;
+  }
+
+  function calcPairsPerHour(totalPairs, sessions) {
+    if (!sessions.length || totalPairs === 0) return 0;
+    var elapsedMin = sessions[sessions.length - 1].endMin - sessions[0].startMin;
+    if (elapsedMin <= 0) return 0;
+    var downtimeMin = calcDowntime(sessions);
+    var activeMin = Math.max(1, elapsedMin - downtimeMin);
+    return (totalPairs / activeMin) * 60;
+  }
+
+  // ── Rendering ────────────────────────────────────────────────────────────
+
+  function buildSchedule(races) {
+    allRaces = races;
+
+    // Unique days (from both runs and plans)
+    var daySet = {};
+    races.forEach(function(r) { if (r.created_date) daySet[r.created_date] = true; });
+    // Include plan-only days
+    Object.keys(dayPlans).forEach(function(d) { daySet[d] = true; });
+    var days = Object.keys(daySet).sort();
+
+    if (!days.length) {
+      document.getElementById("schedule-container").innerHTML = '<div class="no-data">No runs or plans to display. <a href="/schedule-builder.html">Build a plan</a></div>';
+      document.getElementById("day-tabs").innerHTML = "";
+      document.getElementById("summary-stats").innerHTML = "";
+      return;
+    }
+
+    // Default to latest day, or today if today exists
+    if (!selectedDay || (selectedDay !== "__all__" && days.indexOf(selectedDay) === -1)) {
+      var today = todayStr();
+      selectedDay = days.indexOf(today) !== -1 ? today : days[days.length - 1];
+    }
+
+    renderDayTabs(days);
+
+    if (selectedDay === "__all__") {
+      renderAllDays(days);
+    } else {
+      var dayRaces = races.filter(function(r) { return r.created_date === selectedDay; });
+      var sessions = buildSessionsForDay(dayRaces);
+      renderSummaryForSelection(selectedDay === "__all__" ? days : [selectedDay]);
+      renderScheduleTable([{ day: selectedDay, sessions: sessions }]);
+    }
+  }
+
+  function renderDayTabs(days) {
+    var today = todayStr();
+    var latestDay = days[days.length - 1];
+    var html = "";
+
+    days.forEach(function(day, idx) {
+      var cls = day === selectedDay ? "day-tab active" : "day-tab";
+      var label;
+      if (day === today) {
+        label = "Today";
+      } else if (day === latestDay && today !== latestDay) {
+        label = idx === 0 && days.length === 1 ? "Latest" : fmtDateLabel(day);
+        // Show "Latest" only for the latest-day tab when today is not in dataset
+        if (day === latestDay && days.indexOf(today) === -1) {
+          label = "Latest";
+        }
+      } else {
+        label = fmtDateLabel(day);
+      }
+      html += '<div class="' + cls + '" data-day="' + esc(day) + '">' + esc(label) + '</div>';
+    });
+    if (days.length > 1) {
+      var cls2 = selectedDay === "__all__" ? "day-tab active" : "day-tab";
+      html += '<div class="' + cls2 + '" data-day="__all__">All Days</div>';
+    }
+
+    var container = document.getElementById("day-tabs");
+    container.innerHTML = html;
+    container.querySelectorAll(".day-tab").forEach(function(tab) {
+      tab.addEventListener("click", function() {
+        selectedDay = tab.getAttribute("data-day");
+        buildSchedule(allRaces);
+      });
+    });
+  }
+
+  function renderAllDays(days) {
+    renderSummaryForSelection(days);
+    var dayGroups = [];
+    days.forEach(function(day) {
+      var dayRaces = allRaces.filter(function(r) { return r.created_date === day; });
+      var sessions = buildSessionsForDay(dayRaces);
+      dayGroups.push({ day: day, sessions: sessions });
+    });
+    renderScheduleTable(dayGroups);
+  }
+
+  function renderSummaryForSelection(days) {
+    var totalPairs = 0;
+    var categorySet = {};
+    var totalSessions = 0;
+
+    days.forEach(function(day) {
+      var dayRaces = allRaces.filter(function(r) { return r.created_date === day; });
+      var sessions = buildSessionsForDay(dayRaces);
+      totalSessions += sessions.length;
+      sessions.forEach(function(s) {
+        totalPairs += s.pairCount;
+        categorySet[s.category] = true;
+      });
+    });
+
+    var html = statCard(days.length, "Days");
+    html += statCard(Object.keys(categorySet).length, "Categories");
+    html += statCard(totalSessions, "Sessions");
+    html += statCard(totalPairs, "Total Pairs");
+    html += statCard(totalPairs * 2, "Total Runs");
+    document.getElementById("summary-stats").innerHTML = html;
+  }
+
+  function renderScheduleTable(dayGroups) {
+    var html = "";
+    dayGroups.forEach(function(dg) {
+      html += buildDayHtml(dg.sessions, dg.day);
+    });
+    document.getElementById("schedule-container").innerHTML = html;
+  }
+
+  // ── Plan Helpers ───────────────────────────────────────────────────────
+  function normalizePlanKey(cat, round) {
+    var c = (cat || "").toUpperCase().trim().replace(/\s+/g, " ");
+    var r = (round || "").toUpperCase().trim();
+    // Normalize E-rounds to R-rounds
+    if (r.startsWith("E")) r = "R" + r.slice(1);
+    return c + "|||" + r;
+  }
+
+  function planParseTime(s) {
+    if (!s) return null;
+    var clean = s.trim().toUpperCase();
+    var match = clean.match(/^(\d{1,2}):?(\d{2})?\s*(AM|PM)?$/);
+    if (!match) return null;
+    var h = parseInt(match[1], 10);
+    var m = parseInt(match[2] || "0", 10);
+    var ampm = match[3];
+    if (ampm === "PM" && h < 12) h += 12;
+    if (ampm === "AM" && h === 12) h = 0;
+    return { h: h, m: m };
+  }
+
+  function planFmtTime12(h, m) {
+    var ampm = h >= 12 ? "PM" : "AM";
+    var h12 = h === 0 ? 12 : h > 12 ? h - 12 : h;
+    return h12 + ":" + String(m).padStart(2, "0") + " " + ampm;
+  }
+
+  function planFmtDurSec(sec) {
+    if (sec <= 0) return "\u2014";
+    var mins = Math.floor(sec / 60);
+    if (mins >= 60) {
+      var hr = Math.floor(mins / 60);
+      var rm = mins % 60;
+      return rm > 0 ? hr + "h " + rm + "m" : hr + "h";
+    }
+    return mins + "m";
+  }
+
+  function calcPlanProjectedTimes(plan) {
+    var start = planParseTime(plan.startTime || "9:00 AM");
+    if (!start) return [];
+    var times = [];
+    var curMin = start.h * 60 + start.m;
+    var delayApplied = false;
+    var delay = plan.delayMinutes || 0;
+    var planEntries = plan.entries || [];
+
+    for (var i = 0; i < planEntries.length; i++) {
+      var entry = planEntries[i];
+      var startMin = curMin;
+      if (!delayApplied) { startMin += delay; delayApplied = true; }
+      if (entry.fixedTime) {
+        var pinned = planParseTime(entry.fixedTime);
+        if (pinned) {
+          var pinnedMin = pinned.h * 60 + pinned.m;
+          if (pinnedMin >= curMin) startMin = pinnedMin;
+        }
+      }
+      var dur = entry.plannedDurationSec || 0;
+      var endMin = startMin + dur / 60;
+      var sh = Math.floor(startMin / 60) % 24;
+      var sm = Math.round(startMin % 60);
+      var eh = Math.floor(endMin / 60) % 24;
+      var em = Math.round(endMin % 60);
+      times.push({ startH: sh, startM: sm, endH: eh, endM: em, entry: entry });
+      curMin = endMin;
+    }
+    return times;
+  }
+
+  function buildDayHtml(sessions, day) {
+    var plan = dayPlans[day] || null;
+    var hasPlan = plan && plan.entries && plan.entries.length > 0;
+
+    if (!sessions.length && !hasPlan) {
+      return '<div class="sched-card"><div class="sched-day-header"><div class="sched-day-left"><div class="sched-day-date">' + esc(fmtDateFull(day)) + '</div></div></div><div class="no-data" style="padding:1.5rem;">No sessions on this day</div></div>';
+    }
+
+    // Day-level stats (actual only)
+    var totalPairs = 0;
+    sessions.forEach(function(s) { totalPairs += s.pairCount; });
+    var totalRuns = totalPairs * 2;
+    var elapsedMin = sessions.length > 0 ? sessions[sessions.length - 1].endMin - sessions[0].startMin : 0;
+    var downtimeMin = calcDowntime(sessions);
+    var activeMin = Math.max(0, elapsedMin - downtimeMin);
+    var pph = calcPairsPerHour(totalPairs, sessions);
+    var timeRange = sessions.length > 0 ? (fmtTimeShort(sessions[0].startTs) + " \u2013 " + fmtTimeShort(sessions[sessions.length - 1].endTs)) : "\u2014";
+
+    var html = '<div class="sched-card">';
+
+    // Day header
+    html += '<div class="sched-day-header">';
+    html += '<div class="sched-day-left">';
+    html += '<div class="sched-day-date">' + esc(fmtDateFull(day));
+    if (hasPlan) {
+      html += '<a href="/schedule-builder.html?date=' + esc(day) + '" class="sched-edit-link">Edit Plan</a>';
+    }
+    html += '</div>';
+    html += '<div class="sched-day-time">' + esc(timeRange) + '</div>';
+    html += '</div>';
+    html += '<div class="sched-day-right">';
+    html += '<div class="sched-day-stat"><div class="sched-day-stat-val">' + totalPairs + '</div><div class="sched-day-stat-label">Pairs</div></div>';
+    html += '<div class="sched-day-stat"><div class="sched-day-stat-val">' + totalRuns + '</div><div class="sched-day-stat-label">Runs</div></div>';
+    html += '<div class="sched-day-stat"><div class="sched-day-stat-val">' + sessions.length + '</div><div class="sched-day-stat-label">Sessions</div></div>';
+    html += '<div class="sched-day-stat"><div class="sched-day-stat-val">' + (pph > 0 ? pph.toFixed(1) : "\u2014") + '</div><div class="sched-day-stat-label">Pairs/Hr</div></div>';
+    html += '<div class="sched-day-stat"><div class="sched-day-stat-val">' + esc(fmtDuration(activeMin)) + '</div><div class="sched-day-stat-label">Active</div></div>';
+    html += '</div>';
+    html += '</div>';
+
+    // Table
+    var colCount = hasPlan ? 9 : 8;
+    html += '<div class="sched-scroll">';
+    html += '<table class="sched-table">';
+    html += '<thead><tr>';
+    html += '<th>Start</th>';
+    html += '<th>End</th>';
+    html += '<th>Category</th>';
+    html += '<th>Round</th>';
+    html += '<th style="text-align:center"># Cars</th>';
+    html += '<th style="text-align:center">Pairs</th>';
+    html += '<th style="text-align:center">Duration</th>';
+    html += '<th style="text-align:center">Per Pair</th>';
+    if (hasPlan) html += '<th style="text-align:center">Expected</th>';
+    html += '</tr></thead><tbody>';
+
+    if (!hasPlan) {
+      // No plan: render actual sessions only — no color coding, no Expected
+      for (var i = 0; i < sessions.length; i++) {
+        if (showDowntime && i > 0) {
+          var gapMin = sessions[i].startMin - sessions[i - 1].endMin;
+          if (gapMin >= DOWNTIME_THRESHOLD) {
+            html += '<tr class="sched-gap"><td colspan="' + colCount + '"><span class="gap-icon">\u23f8</span> Downtime: ' + fmtDuration(gapMin) + ' (' + esc(fmtTime12(sessions[i - 1].endTs)) + ' \u2192 ' + esc(fmtTime12(sessions[i].startTs)) + ')</td></tr>';
+          }
+        }
+        html += renderActualRow(sessions[i], false);
+      }
+    } else {
+      // Merge plan with actuals
+      html += renderMergedPlanActual(sessions, plan, day);
+    }
+
+    html += '</tbody></table></div></div>';
+    return html;
+  }
+
+  function renderActualRow(s, showExpected) {
+    var rl = roundLabel(s.round);
+    var pillCls = "sched-round-pill" + (roundPillClass(rl) ? " " + roundPillClass(rl) : "");
+    var expectedSec = findClassPerPair(s.category);
+    var actualPerPairStr = fmtPerPair(s.durationMin, s.pairCount);
+    var actualSec = (s.pairCount > 1 && s.durationMin > 0) ? Math.round((s.durationMin * 60) / (s.pairCount - 1)) : 0;
+    // Only apply pace color-coding when showing expected (i.e. plan exists)
+    var pCls = showExpected ? paceClass(actualSec, expectedSec) : "";
+
+    var h = '<tr>';
+    h += '<td class="sched-time">' + esc(fmtTime12(s.startTs)) + '</td>';
+    h += '<td class="sched-time">' + esc(fmtTime12(s.endTs)) + '</td>';
+    h += '<td class="sched-cat">' + categoryLink(s.category) + '</td>';
+    h += '<td><span class="' + pillCls + '">' + esc(rl) + '</span></td>';
+    h += '<td class="sched-num">' + (s.pairCount * 2) + '</td>';
+    h += '<td class="sched-num">' + s.pairCount + '</td>';
+    h += '<td class="sched-duration">' + fmtDuration(s.durationMin) + '</td>';
+    h += '<td class="sched-pace ' + pCls + '">' + actualPerPairStr + '</td>';
+    if (showExpected) {
+      h += '<td class="sched-expected">' + fmtSecAsTime(expectedSec) + '</td>';
+    }
+    h += '</tr>';
+    return h;
+  }
+
+  function renderMergedPlanActual(sessions, plan, day) {
+    var html = "";
+    var projTimes = calcPlanProjectedTimes(plan);
+    var planEntries = plan.entries || [];
+
+    // Build a map of actual sessions keyed by normalized category+round
+    var actualMap = {};
+    sessions.forEach(function(s) {
+      var key = normalizePlanKey(s.category, s.round);
+      if (!actualMap[key]) actualMap[key] = [];
+      actualMap[key].push(s);
+    });
+
+    var matchedActualKeys = {};
+
+    // Walk through plan entries in order
+    var unmatchedActuals = [];
+
+    for (var i = 0; i < planEntries.length; i++) {
+      var pe = planEntries[i];
+      var pt = projTimes[i] || null;
+
+      if (pe.isBreak) {
+        // Render break as plan row
+        html += '<tr class="sched-plan-break">';
+        html += '<td class="sched-time">' + (pt ? planFmtTime12(pt.startH, pt.startM) : '') + '</td>';
+        html += '<td class="sched-time">' + (pt ? planFmtTime12(pt.endH, pt.endM) : '') + '</td>';
+        html += '<td colspan="7" style="font-style:italic;color:rgba(255,209,102,0.55);">\u23f1 ' + esc(pe.className || "Break") + ' (' + planFmtDurSec(pe.plannedDurationSec || 0) + ')</td>';
+        html += '</tr>';
+        continue;
+      }
+
+      var key = normalizePlanKey(pe.className, pe.round);
+      var actuals = actualMap[key];
+
+      if (actuals && actuals.length > 0 && !matchedActualKeys[key]) {
+        // Matched: show actual data
+        matchedActualKeys[key] = true;
+        var s = actuals[0]; // Use first match
+        var rl = roundLabel(s.round);
+        var pillCls = "sched-round-pill" + (roundPillClass(rl) ? " " + roundPillClass(rl) : "");
+        var expectedSec = findClassPerPair(s.category);
+        var actualPerPairStr = fmtPerPair(s.durationMin, s.pairCount);
+        var actualSec = (s.pairCount > 1 && s.durationMin > 0) ? Math.round((s.durationMin * 60) / (s.pairCount - 1)) : 0;
+        var pCls = paceClass(actualSec, expectedSec);
+
+        // Check if fewer pairs than planned => extrapolate remaining
+        var plannedPairs = pe.pairs || 0;
+        var actualPairCount = s.pairCount || 0;
+        var extrapolateNote = "";
+        if (actualPairCount < plannedPairs && actualPairCount > 0) {
+          var remaining = plannedPairs - actualPairCount;
+          var perPairActualSec = (s.durationMin > 0 && actualPairCount > 1) ? (s.durationMin * 60) / (actualPairCount - 1) : (pe.perPairSec || 60);
+          var remainingMin = (remaining * perPairActualSec) / 60;
+          extrapolateNote = " (~" + Math.round(remainingMin) + "m remaining for " + remaining + " pairs)";
+        }
+
+        html += '<tr>';
+        html += '<td class="sched-time">' + esc(fmtTime12(s.startTs)) + '</td>';
+        html += '<td class="sched-time">' + esc(fmtTime12(s.endTs)) + '</td>';
+        html += '<td class="sched-cat">' + categoryLink(s.category);
+        if (extrapolateNote) html += '<span style="color:rgba(255,138,0,0.6);font-size:0.6rem;font-weight:400;margin-left:0.3rem;">' + esc(extrapolateNote) + '</span>';
+        html += '</td>';
+        html += '<td><span class="' + pillCls + '">' + esc(rl) + '</span></td>';
+        html += '<td class="sched-num">' + (actualPairCount * 2) + '</td>';
+        html += '<td class="sched-num">' + actualPairCount + '</td>';
+        html += '<td class="sched-duration">' + fmtDuration(s.durationMin) + '</td>';
+        html += '<td class="sched-pace ' + pCls + '">' + actualPerPairStr + '</td>';
+        html += '<td class="sched-expected">' + fmtSecAsTime(expectedSec) + '</td>';
+        html += '</tr>';
+      } else {
+        // Plan-only: show projected in blue
+        var rl2 = roundLabel(pe.round);
+        var pillCls2 = "sched-round-pill" + (roundPillClass(rl2) ? " " + roundPillClass(rl2) : "");
+
+        html += '<tr class="sched-plan-row">';
+        html += '<td class="sched-time">' + (pt ? planFmtTime12(pt.startH, pt.startM) : '') + '</td>';
+        html += '<td class="sched-time">' + (pt ? planFmtTime12(pt.endH, pt.endM) : '') + '</td>';
+        html += '<td class="sched-cat">' + esc(pe.className || "") + '</td>';
+        html += '<td><span class="' + pillCls2 + '">' + esc(rl2) + '</span></td>';
+        html += '<td class="sched-num">' + ((pe.pairs || 0) * 2) + '</td>';
+        html += '<td class="sched-num">' + (pe.pairs || 0) + '</td>';
+        html += '<td class="sched-duration">' + planFmtDurSec(pe.plannedDurationSec || 0) + '</td>';
+        html += '<td class="sched-pace">' + fmtSecAsTime(pe.perPairSec) + '</td>';
+        html += '<td class="sched-expected">' + fmtSecAsTime(pe.perPairSec) + '</td>';
+        html += '</tr>';
+      }
+    }
+
+    // Unmatched actuals: sessions that ran but weren't in the plan
+    // Insert them at the top
+    var unmatchedHtml = "";
+    sessions.forEach(function(s) {
+      var key = normalizePlanKey(s.category, s.round);
+      if (!matchedActualKeys[key]) {
+        unmatchedHtml += renderActualRow(s, true);
+      }
+    });
+
+    if (unmatchedHtml) {
+      html = unmatchedHtml + html;
+    }
+
+    return html;
+  }
+
+  // ── Plan Loading ─────────────────────────────────────────────────────────
+
+  async function loadPlans() {
+    if (!deviceId) return;
+    try {
+      var res = await fetch("/api/schedule-plans?device_id=" + encodeURIComponent(deviceId));
+      var data = await res.json();
+      var plans = data.plans || [];
+      dayPlans = {};
+      plans.forEach(function(p) {
+        if (p.date && p.entries && p.entries.length > 0) {
+          dayPlans[p.date] = p;
+        }
+      });
+    } catch(e) {
+      console.error("Load plans error:", e);
+    }
+  }
+
+  // ── Init ─────────────────────────────────────────────────────────────────
+
+  async function init() {
+    if (!deviceId) {
+      document.getElementById("no-device").style.display = "block";
+      return;
+    }
+    document.getElementById("loading-msg").style.display = "block";
+
+    var url = eventId && eventId !== "__all__"
+      ? "/api/events/" + encodeURIComponent(eventId) + "/results?limit=2000"
+      : "/api/runs?device_id=" + encodeURIComponent(deviceId) + "&limit=2000";
+
+    try {
+      // Load runs, plans, and race classes in parallel
+      var [runsRes] = await Promise.all([fetch(url), loadPlans(), loadClassesFromAPI()]);
+      var data = await runsRes.json();
+      var races = data.races || [];
+      document.getElementById("loading-msg").style.display = "none";
+      document.getElementById("content").style.display = "block";
+      buildSchedule(races);
+    } catch(e) {
+      console.error("Schedule load error:", e);
+      document.getElementById("loading-msg").style.display = "none";
+      document.getElementById("content").style.display = "block";
+      document.getElementById("schedule-container").innerHTML = '<div class="no-data">Error loading schedule data. Check your connection and try again.</div>';
+    }
+  }
+
+  // Downtime toggle
+  document.getElementById("show-downtime").addEventListener("change", function() {
+    showDowntime = this.checked;
+    buildSchedule(allRaces);
+  });
+
+  init();
+})();
+</script>
+</body>
+</html>

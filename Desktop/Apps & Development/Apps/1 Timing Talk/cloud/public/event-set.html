@@ -1,0 +1,250 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Event Set — Timing Talk</title>
+<link rel="stylesheet" href="/styles.css">
+<style>
+.es-section{background:rgba(10,16,34,0.92);border:1px solid rgba(255,255,255,0.08);border-radius:14px;padding:1.2rem;margin-bottom:1rem;}
+.es-section h3{font-size:0.7rem;font-weight:800;letter-spacing:0.12em;text-transform:uppercase;color:rgba(255,255,255,0.4);margin:0 0 0.8rem;}
+.es-row{display:grid;grid-template-columns:120px 1fr;align-items:center;gap:0.5rem;margin-bottom:0.6rem;}
+@media(max-width:600px){.es-row{grid-template-columns:1fr;}}
+.es-row label{font-size:0.75rem;color:rgba(255,255,255,0.6);font-weight:600;}
+.es-row select,.es-row input{background:#0d1528;color:#e8e8f0;border:1px solid rgba(255,255,255,0.1);border-radius:8px;padding:0.5rem 0.8rem;font-size:0.85rem;width:100%;box-sizing:border-box;}
+.es-row select:focus,.es-row input:focus{outline:none;border-color:#ffd166;}
+.es-row input[type="date"]{color-scheme:dark;font-family:'SF Mono','Fira Code','Consolas',monospace;}
+.es-current{background:linear-gradient(135deg,rgba(255,209,102,0.08),rgba(51,87,255,0.06));border:1px solid rgba(255,209,102,0.2);border-radius:14px;padding:1.2rem;margin-bottom:1.5rem;text-align:center;}
+.es-current-label{font-size:0.6rem;font-weight:800;letter-spacing:0.12em;text-transform:uppercase;color:rgba(255,255,255,0.35);margin-bottom:0.3rem;}
+.es-current-val{font-family:'Oswald','Impact',sans-serif;font-size:1.4rem;font-weight:900;color:#ffd166;margin-bottom:0.15rem;}
+.es-current-sub{font-size:0.75rem;color:rgba(255,255,255,0.5);}
+.es-quick-links{display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:0.6rem;margin-top:1rem;}
+.es-link{display:flex;align-items:center;gap:0.5rem;padding:0.8rem 1rem;background:rgba(255,255,255,0.04);border:1px solid rgba(255,255,255,0.08);border-radius:10px;color:#e8e8f0;text-decoration:none;font-size:0.8rem;font-weight:600;transition:all 0.2s;}
+.es-link:hover{background:rgba(255,255,255,0.08);border-color:rgba(255,255,255,0.15);}
+.es-link svg{width:18px;height:18px;stroke:currentColor;flex-shrink:0;}
+.btn{padding:0.6rem 1.5rem;border-radius:8px;font-size:0.8rem;font-weight:700;cursor:pointer;border:none;transition:all 0.2s;}
+.btn-primary{background:linear-gradient(180deg,#ffd166,#ffbf00);color:#1a1400;}
+.btn-primary:hover{box-shadow:0 0 12px rgba(255,209,102,0.4);}
+.btn-secondary{background:rgba(255,255,255,0.06);color:rgba(255,255,255,0.7);border:1px solid rgba(255,255,255,0.1);}
+.btn-secondary:hover{background:rgba(255,255,255,0.1);}
+.btn-row{display:flex;gap:0.5rem;margin-top:1rem;flex-wrap:wrap;}
+.msg{padding:0.6rem 1rem;border-radius:8px;font-size:0.8rem;margin-top:0.5rem;display:none;}
+.msg.ok{display:block;background:rgba(34,197,94,0.1);color:#22c55e;border:1px solid rgba(34,197,94,0.2);}
+.msg.err{display:block;background:rgba(239,68,68,0.1);color:#ef4444;border:1px solid rgba(239,68,68,0.2);}
+.or-divider{text-align:center;color:rgba(255,255,255,0.3);font-size:0.7rem;font-weight:700;letter-spacing:0.1em;text-transform:uppercase;margin:0.8rem 0;}
+</style>
+</head>
+<body data-nav-primary="event-set">
+<div class="tt-shell-content" id="main-content">
+  <div class="page-header">
+    <h1>Event Set</h1>
+    <p class="page-subtitle">Choose your device and event — all pages will use this context</p>
+  </div>
+
+  <!-- Current Selection Banner -->
+  <div class="es-current" id="current-banner">
+    <div class="es-current-label">Currently Viewing</div>
+    <div class="es-current-val" id="cur-event">No event selected</div>
+    <div class="es-current-sub" id="cur-device">Select a device and event below</div>
+  </div>
+
+  <!-- Step 1: Device -->
+  <div class="es-section">
+    <h3>1. Select Device</h3>
+    <div class="es-row">
+      <label>Device</label>
+      <select id="es-device" onchange="onDeviceSelect()">
+        <option value="">Choose a device...</option>
+      </select>
+    </div>
+  </div>
+
+  <!-- Step 2: Event -->
+  <div class="es-section" id="event-section">
+    <h3>2. Select or Create Event</h3>
+    <div class="es-row">
+      <label>Event</label>
+      <select id="es-event" onchange="onEventSelect()">
+        <option value="">Choose an event...</option>
+      </select>
+    </div>
+
+    <div class="or-divider">— or create new —</div>
+
+    <div class="es-row"><label>Event Name</label><input type="text" id="es-new-name" placeholder="e.g. Gatornationals"></div>
+    <div class="es-row"><label>Start Date</label><input type="date" id="es-new-start"></div>
+    <div class="es-row"><label>End Date</label><input type="date" id="es-new-end"></div>
+    <div class="es-row"><label>Track Name</label><input type="text" id="es-new-track" placeholder="e.g. Gainesville Raceway"></div>
+    <div class="es-row"><label>Promoter</label><input type="text" id="es-new-promoter" placeholder="e.g. NHRA"></div>
+    <div class="btn-row">
+      <button class="btn btn-primary" onclick="doCreateEvent()">Create Event</button>
+    </div>
+    <div class="msg" id="create-msg"></div>
+  </div>
+
+  <!-- Quick Links -->
+  <div class="es-quick-links" id="quick-links" style="display:none;">
+    <a href="/feed.html" class="es-link">
+      <svg viewBox="0 0 24 24" fill="none"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M13 10V3L4 14h7v7l9-11h-7z"/></svg>
+      Live Feed
+    </a>
+    <a href="/results.html" class="es-link">
+      <svg viewBox="0 0 24 24" fill="none"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M9 5H7a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V7a2 2 0 0 0-2-2h-2M9 5a2 2 0 0 0 2 2h2a2 2 0 0 0 2-2"/></svg>
+      Results
+    </a>
+    <a href="/settings.html" class="es-link">
+      <svg viewBox="0 0 24 24" fill="none"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 0 0 2.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 0 0 1.066 2.573c1.756.426 1.756 2.924 0 3.35"/></svg>
+      Device Settings
+    </a>
+  </div>
+</div>
+
+<script src="/auth.js"></script>
+<script src="/shell.js"></script>
+<script>
+let devices = [];
+let events = [];
+
+async function loadDevices() {
+  try {
+    const res = await fetch("/api/tracks");
+    const data = await res.json();
+    devices = data.tracks || data || [];
+    const select = document.getElementById("es-device");
+    const saved = localStorage.getItem("tt-selected-device") || "";
+    devices.forEach(t => {
+      const opt = document.createElement("option");
+      opt.value = t.deviceId;
+      opt.textContent = (t.name || t.trackName || "Unknown") + (t.online ? " (Online)" : "") + (t.location ? " — " + t.location : "");
+      if (t.deviceId === saved) opt.selected = true;
+      select.appendChild(opt);
+    });
+    if (saved) onDeviceSelect();
+  } catch(e) { console.error(e); }
+}
+
+async function onDeviceSelect() {
+  const deviceId = document.getElementById("es-device").value;
+  localStorage.setItem("tt-selected-device", deviceId);
+  if (!deviceId) return;
+
+  // Load events for this device
+  try {
+    const res = await fetch("/api/events?device_id=" + encodeURIComponent(deviceId));
+    const data = await res.json();
+    events = data.events || data || [];
+    const select = document.getElementById("es-event");
+    select.innerHTML = '<option value="">Choose an event...</option>';
+    select.innerHTML += '<option value="__all__">All Runs (no event filter)</option>';
+    events.forEach(e => {
+      const opt = document.createElement("option");
+      opt.value = e.id;
+      const dates = e.start_date && e.end_date ? ` (${e.start_date} to ${e.end_date})` : "";
+      const count = e.race_count !== undefined ? ` [${e.race_count} runs]` : "";
+      opt.textContent = (e.name || e.event_name || e.id) + dates + count;
+      select.appendChild(opt);
+    });
+    // Restore saved event
+    const savedEvent = localStorage.getItem("tt-selected-event") || "";
+    if (savedEvent) {
+      for (let i = 0; i < select.options.length; i++) {
+        if (select.options[i].value === savedEvent) { select.selectedIndex = i; break; }
+      }
+    }
+    onEventSelect();
+  } catch(e) { console.error(e); }
+
+  // Pre-fill promoter from device info
+  const dev = devices.find(d => d.deviceId === deviceId);
+  if (dev) {
+    document.getElementById("es-new-promoter").value = dev.promoter || "";
+    document.getElementById("es-new-track").value = dev.trackName || dev.name || "";
+  }
+  updateBanner();
+}
+
+function onEventSelect() {
+  const eventId = document.getElementById("es-event").value;
+  localStorage.setItem("tt-selected-event", eventId);
+  updateBanner();
+}
+
+function updateBanner() {
+  const deviceId = localStorage.getItem("tt-selected-device") || "";
+  const eventId = localStorage.getItem("tt-selected-event") || "";
+  const dev = devices.find(d => d.deviceId === deviceId);
+  const evt = events.find(e => e.id === eventId);
+
+  const curEvent = document.getElementById("cur-event");
+  const curDevice = document.getElementById("cur-device");
+  const links = document.getElementById("quick-links");
+
+  if (eventId === "__all__") {
+    curEvent.textContent = "All Runs";
+    curDevice.textContent = dev ? (dev.name || dev.trackName || deviceId) : deviceId;
+    links.style.display = "grid";
+  } else if (evt) {
+    curEvent.textContent = evt.name || evt.event_name || evt.id;
+    const dates = evt.start_date && evt.end_date ? evt.start_date + " to " + evt.end_date : "";
+    curDevice.textContent = (dev ? (dev.name || dev.trackName || "") : "") + (dates ? " — " + dates : "");
+    links.style.display = "grid";
+  } else if (deviceId) {
+    curEvent.textContent = "No event selected";
+    curDevice.textContent = dev ? (dev.name || dev.trackName || deviceId) : "Device selected";
+    links.style.display = "none";
+  } else {
+    curEvent.textContent = "No event selected";
+    curDevice.textContent = "Select a device and event below";
+    links.style.display = "none";
+  }
+}
+
+async function doCreateEvent() {
+  const msg = document.getElementById("create-msg");
+  const deviceId = localStorage.getItem("tt-selected-device") || "";
+  if (!deviceId) { msg.className = "msg err"; msg.textContent = "Select a device first."; return; }
+
+  const name = document.getElementById("es-new-name").value;
+  const start = document.getElementById("es-new-start").value;
+  const end = document.getElementById("es-new-end").value;
+  if (!name || !start || !end) { msg.className = "msg err"; msg.textContent = "Name, start date, and end date are required."; return; }
+
+  try {
+    const res = await fetch("/api/events", {
+      method: "POST",
+      headers: {"Content-Type": "application/json"},
+      body: JSON.stringify({
+        name: name,
+        device_id: deviceId,
+        start_date: start,
+        end_date: end,
+        track_name: document.getElementById("es-new-track").value,
+        promoter: document.getElementById("es-new-promoter").value,
+        status: "active",
+      })
+    });
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.error || "Failed to create event");
+    msg.className = "msg ok"; msg.textContent = "Event created!";
+    // Select the new event
+    localStorage.setItem("tt-selected-event", data.id || data.event_id || "");
+    // Clear form
+    document.getElementById("es-new-name").value = "";
+    document.getElementById("es-new-start").value = "";
+    document.getElementById("es-new-end").value = "";
+    // Reload events
+    onDeviceSelect();
+  } catch(e) {
+    msg.className = "msg err"; msg.textContent = e.message;
+  }
+}
+
+// Set today as default date
+const today = new Date().toISOString().slice(0, 10);
+document.getElementById("es-new-start").value = today;
+document.getElementById("es-new-end").value = today;
+
+loadDevices();
+</script>
+</body>
+</html>
