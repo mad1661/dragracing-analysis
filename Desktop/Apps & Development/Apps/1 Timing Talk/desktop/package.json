@@ -1,0 +1,83 @@
+{
+  "name": "timing-talk-desktop",
+  "version": "1.0.0",
+  "description": "Timing Talk - Virtual COM Port Bridge for Remote Serial Data",
+  "author": "NHRA Timing",
+  "main": "src/main.js",
+  "scripts": {
+    "start": "electron .",
+    "build": "electron-builder --mac --win --linux",
+    "build:mac": "electron-builder --mac",
+    "build:win": "electron-builder --win",
+    "build:linux": "electron-builder --linux",
+    "dist": "npm run build && node scripts/copy-to-hosting.js"
+  },
+  "build": {
+    "appId": "com.timingtalk.desktop",
+    "productName": "Timing Talk",
+    "artifactName": "TimingTalk-${version}-${os}-${arch}.${ext}",
+    "files": [
+      "src/**/*",
+      "assets/**/*"
+    ],
+    "mac": {
+      "category": "public.app-category.utilities",
+      "target": [
+        "dmg"
+      ],
+      "icon": "assets/icon.png",
+      "darkModeSupport": true,
+      "forceCodeSigning": false
+    },
+    "win": {
+      "target": [
+        {
+          "target": "nsis",
+          "arch": [
+            "x64"
+          ]
+        },
+        {
+          "target": "portable",
+          "arch": [
+            "x64"
+          ]
+        }
+      ],
+      "icon": "assets/icon.png"
+    },
+    "nsis": {
+      "oneClick": true,
+      "perMachine": false,
+      "allowToChangeInstallationDirectory": false,
+      "createDesktopShortcut": true,
+      "createStartMenuShortcut": true,
+      "shortcutName": "Timing Talk"
+    },
+    "linux": {
+      "target": [
+        {
+          "target": "AppImage",
+          "arch": [
+            "x64"
+          ]
+        }
+      ],
+      "category": "Utility",
+      "icon": "assets/icon.png"
+    },
+    "publish": null
+  },
+  "dependencies": {
+    "electron-store": "^8.2.0",
+    "firebase": "^11.1.0"
+  },
+  "optionalDependencies": {
+    "serialport": "^12.0.0"
+  },
+  "devDependencies": {
+    "electron": "^33.0.0",
+    "electron-builder": "^25.1.0",
+    "firebase-admin": "^13.7.0"
+  }
+}

@@ -1,0 +1,7 @@
+pyserial>=3.5
+luma.oled>=3.13
+luma.core>=2.4
+Pillow>=10.0
+qrcode>=7.4
+firebase-admin>=6.5
+flask>=3.0

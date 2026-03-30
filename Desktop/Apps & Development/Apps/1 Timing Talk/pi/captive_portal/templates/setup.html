@@ -1,0 +1,390 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Timing Talk</title>
+    <style>
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: #0f172a;
+            color: #e2e8f0;
+            min-height: 100vh;
+            padding: 1rem;
+        }
+        .container {
+            max-width: 460px;
+            margin: 0 auto;
+        }
+        .card {
+            background: #1e293b;
+            border-radius: 12px;
+            padding: 1.25rem;
+            margin-bottom: 0.75rem;
+        }
+        .logo {
+            text-align: center;
+            padding: 1rem 0 0.75rem;
+        }
+        .logo h1 { font-size: 1.4rem; font-weight: 700; color: #38bdf8; }
+        .logo p { font-size: 0.8rem; color: #64748b; margin-top: 0.15rem; }
+        .status-bar {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 0.5rem 0.75rem;
+            background: #162032;
+            border-radius: 8px;
+            font-size: 0.8rem;
+            margin-bottom: 0.75rem;
+        }
+        .status-dot {
+            width: 8px; height: 8px;
+            border-radius: 50%;
+            display: inline-block;
+            margin-right: 0.4rem;
+        }
+        .dot-green { background: #22c55e; }
+        .dot-yellow { background: #f59e0b; }
+        .dot-red { background: #ef4444; }
+        .section-title {
+            font-size: 0.7rem;
+            text-transform: uppercase;
+            letter-spacing: 0.06em;
+            color: #64748b;
+            margin-bottom: 0.5rem;
+        }
+        .alert {
+            padding: 0.6rem 0.75rem;
+            border-radius: 6px;
+            margin-bottom: 0.75rem;
+            font-size: 0.85rem;
+        }
+        .alert-error { background: #7f1d1d; color: #fca5a5; }
+        .alert-success { background: #14532d; color: #86efac; }
+        .network-list {
+            list-style: none;
+            max-height: 180px;
+            overflow-y: auto;
+            margin-bottom: 0.5rem;
+        }
+        .network-item {
+            display: flex;
+            align-items: center;
+            padding: 0.5rem 0.6rem;
+            border: 1px solid #334155;
+            border-radius: 6px;
+            cursor: pointer;
+            transition: all 0.15s;
+            margin-bottom: 0.3rem;
+        }
+        .network-item:hover { background: #334155; border-color: #475569; }
+        .network-item.selected { border-color: #38bdf8; background: #0c4a6e; }
+        .network-item input[type="radio"] { display: none; }
+        .network-name { flex: 1; font-size: 0.9rem; }
+        .network-meta { font-size: 0.75rem; color: #94a3b8; }
+        .badge-saved {
+            font-size: 0.65rem;
+            background: #14532d;
+            color: #86efac;
+            padding: 0.1rem 0.35rem;
+            border-radius: 3px;
+            margin-left: 0.4rem;
+        }
+        .saved-list {
+            list-style: none;
+        }
+        .saved-item {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 0.4rem 0.6rem;
+            background: #162032;
+            border-radius: 6px;
+            margin-bottom: 0.25rem;
+            font-size: 0.85rem;
+        }
+        .saved-item .ssid-name { flex: 1; }
+        .saved-item .connected-badge {
+            font-size: 0.65rem;
+            background: #0c4a6e;
+            color: #38bdf8;
+            padding: 0.1rem 0.35rem;
+            border-radius: 3px;
+            margin-right: 0.5rem;
+        }
+        .forget-btn {
+            background: none;
+            border: 1px solid #7f1d1d;
+            color: #fca5a5;
+            padding: 0.15rem 0.4rem;
+            border-radius: 4px;
+            font-size: 0.7rem;
+            cursor: pointer;
+        }
+        .forget-btn:hover { background: #7f1d1d; }
+        label {
+            display: block;
+            font-size: 0.8rem;
+            color: #94a3b8;
+            margin-bottom: 0.2rem;
+        }
+        input[type="password"], input[type="text"] {
+            width: 100%;
+            padding: 0.55rem 0.65rem;
+            border: 1px solid #334155;
+            border-radius: 6px;
+            background: #0f172a;
+            color: #e2e8f0;
+            font-size: 0.9rem;
+            outline: none;
+            transition: border-color 0.15s;
+            margin-bottom: 0.6rem;
+        }
+        input:focus { border-color: #38bdf8; }
+        input::placeholder { color: #475569; }
+        .btn {
+            width: 100%;
+            padding: 0.6rem;
+            border: none;
+            border-radius: 6px;
+            font-size: 0.9rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: background 0.15s;
+        }
+        .btn-primary { background: #38bdf8; color: #0f172a; }
+        .btn-primary:hover { background: #7dd3fc; }
+        .btn-secondary {
+            background: none;
+            border: 1px solid #334155;
+            color: #94a3b8;
+            font-size: 0.8rem;
+            padding: 0.4rem 0.65rem;
+            width: auto;
+            margin-bottom: 0.5rem;
+        }
+        .btn-secondary:hover { border-color: #38bdf8; color: #38bdf8; }
+        .btn:disabled { background: #334155; color: #64748b; cursor: not-allowed; }
+        .btn-danger {
+            background: #dc2626;
+            color: #fee2e2;
+        }
+        .btn-danger:hover { background: #ef4444; }
+        .info-row {
+            display: flex;
+            justify-content: space-between;
+            padding: 0.2rem 0;
+            font-size: 0.8rem;
+        }
+        .info-row span:first-child { color: #64748b; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="logo">
+            <h1>Timing Talk</h1>
+            <p>Device Management</p>
+        </div>
+
+        <!-- Status Bar -->
+        <div class="status-bar">
+            <div>
+                {% if mode == "client" %}
+                    <span class="status-dot dot-green"></span> Connected: {{ connected_ssid }}
+                {% elif mode == "ethernet" %}
+                    <span class="status-dot dot-green"></span> Ethernet
+                {% elif mode == "ap" %}
+                    <span class="status-dot dot-yellow"></span> AP Mode (setup)
+                {% else %}
+                    <span class="status-dot dot-red"></span> No Network
+                {% endif %}
+            </div>
+            <div>{{ device_ip }}</div>
+        </div>
+
+        {% if error %}
+        <div class="alert alert-error">{{ error }}</div>
+        {% endif %}
+        {% if success %}
+        <div class="alert alert-success">{{ success }}</div>
+        {% endif %}
+
+        <!-- Saved Networks -->
+        {% if saved_networks %}
+        <div class="card">
+            <div class="section-title">Remembered Networks ({{ saved_networks|length }})</div>
+            <ul class="saved-list">
+                {% for ssid in saved_networks %}
+                <li class="saved-item">
+                    <span class="ssid-name">{{ ssid }}</span>
+                    {% if ssid == connected_ssid %}
+                    <span class="connected-badge">connected</span>
+                    {% endif %}
+                    <form method="POST" action="/forget" style="display:inline">
+                        <input type="hidden" name="ssid" value="{{ ssid }}">
+                        <button type="submit" class="forget-btn">forget</button>
+                    </form>
+                </li>
+                {% endfor %}
+            </ul>
+        </div>
+        {% endif %}
+
+        <!-- Add WiFi Network -->
+        <div class="card">
+            <div class="section-title">Add WiFi Network</div>
+            <button type="button" class="btn-secondary" onclick="rescan()">Scan</button>
+
+            <form method="POST" action="/connect" id="wifi-form">
+                <ul class="network-list" id="network-list">
+                    {% for net in networks %}
+                    <li class="network-item" onclick="selectNetwork(this, '{{ net.ssid }}')">
+                        <input type="radio" name="ssid" value="{{ net.ssid }}">
+                        <span class="network-name">
+                            {{ net.ssid }}
+                            {% if net.saved %}<span class="badge-saved">saved</span>{% endif %}
+                        </span>
+                        <span class="network-meta">{{ net.signal }}%</span>
+                    </li>
+                    {% endfor %}
+                    {% if not networks %}
+                    <li style="padding:0.75rem;text-align:center;color:#64748b;font-size:0.85rem">
+                        No networks found. Click Scan.
+                    </li>
+                    {% endif %}
+                </ul>
+
+                <label for="password">Password</label>
+                <input type="password" name="password" id="password" placeholder="WiFi password">
+
+                <!-- Include track info in case it's being set for the first time -->
+                <input type="hidden" name="track_name" value="{{ track_name }}">
+                <input type="hidden" name="track_location" value="{{ track_location }}">
+                <input type="hidden" name="event_name" value="{{ event_name }}">
+
+                <button type="submit" class="btn btn-primary" id="connect-btn">Connect & Save</button>
+            </form>
+        </div>
+
+        <!-- Device Settings -->
+        <div class="card">
+            <div class="section-title">Track / Promoter Settings</div>
+            <form method="POST" action="/settings">
+                <label>Track or Series Name</label>
+                <input type="text" name="track_name" placeholder="e.g. Lebanon Valley Dragway" value="{{ track_name }}">
+                <label>Location</label>
+                <input type="text" name="track_location" placeholder="e.g. West Lebanon, NY" value="{{ track_location }}">
+                <label>Event Name (optional)</label>
+                <input type="text" name="event_name" placeholder="e.g. Division 1 Points Meet" value="{{ event_name }}">
+                <p style="font-size:0.78rem;color:#94a3b8;margin-top:0.5rem;">
+                    If left blank, the event name will be today's date. Saved event names automatically include today's date.
+                </p>
+                <button type="submit" class="btn btn-primary">Save Settings</button>
+            </form>
+        </div>
+
+        <!-- Device Info -->
+        <div class="card">
+            <div class="section-title">Device Info</div>
+            <div class="info-row"><span>IP Address</span><span>{{ device_ip }}</span></div>
+            <div class="info-row"><span>Network Mode</span><span>{{ mode }}</span></div>
+            <div class="info-row"><span>Screen Mode</span><span>{% if kiosk_running %}Kiosk{% elif kiosk_disabled %}Pi Desktop{% else %}Windowed / off{% endif %}</span></div>
+            <div class="info-row"><span>Boot Mode</span><span>{% if kiosk_disabled %}Pi Desktop (kiosk disabled){% else %}Kiosk (auto-start){% endif %}</span></div>
+            {% if track_name %}
+            <div class="info-row"><span>Track</span><span>{{ track_name }}</span></div>
+            {% endif %}
+            <div class="info-row"><span>Event</span><span>{{ effective_event_name }}</span></div>
+        </div>
+
+        <div class="card">
+            <div class="section-title">Remote Support</div>
+            <div class="info-row"><span>Tailscale</span><span>{% if remote_access.tailscale.connected %}Connected{% elif remote_access.tailscale.installed %}Installed / waiting{% else %}Not installed{% endif %}</span></div>
+            <div class="info-row"><span>Suggested Hostname</span><span>{{ remote_access.tailscale.hostname }}</span></div>
+            {% if remote_access.tailscale.dnsName %}
+            <div class="info-row"><span>MagicDNS</span><span>{{ remote_access.tailscale.dnsName }}</span></div>
+            {% endif %}
+            {% if remote_access.tailscale.ip %}
+            <div class="info-row"><span>Tailscale IP</span><span>{{ remote_access.tailscale.ip }}</span></div>
+            {% endif %}
+            <p style="font-size:0.78rem;color:#94a3b8;margin-top:0.5rem;">
+                Use Tailscale plus normal SSH for remote Cursor access without needing the local WiFi IP.
+            </p>
+        </div>
+
+        <div class="card">
+            <div class="section-title">Screen Controls</div>
+            {% if kiosk_running %}
+            <p style="font-size:0.8rem;color:#94a3b8;margin-bottom:0.75rem;">
+                Switch to Pi Desktop mode. Kiosk will <strong>not</strong> restart on next boot until you re-enable it.
+            </p>
+            <form method="POST" action="/kiosk/stop">
+                <button type="submit" class="btn btn-danger">Switch to Pi Desktop</button>
+            </form>
+            {% else %}
+            <p style="font-size:0.8rem;color:#94a3b8;margin-bottom:0.75rem;">
+                {% if kiosk_disabled %}
+                Pi Desktop mode is active. Kiosk will <strong>not</strong> start on boot. Click below to enable kiosk mode now and on future boots.
+                {% else %}
+                Kiosk is not currently running. Click below to start it. It will also auto-start on next boot.
+                {% endif %}
+            </p>
+            <form method="POST" action="/kiosk/start">
+                <button type="submit" class="btn btn-primary">Enable Kiosk Mode</button>
+            </form>
+            {% endif %}
+        </div>
+
+        <!-- Data Inputs -->
+        <div class="card">
+            <div class="section-title">Data Inputs</div>
+            <div class="info-row"><span>Serial (USB)</span><span>Auto-detect</span></div>
+            <div class="info-row"><span>TCP/IP (JSON)</span><span>{{ device_ip }}:{{ tcp_port }}</span></div>
+            <p style="font-size:0.78rem;color:#94a3b8;margin-top:0.5rem;">
+                Send timing data via USB serial adapter or TCP. For TCP, connect to port {{ tcp_port }} and send newline-delimited JSON or plain text.
+            </p>
+        </div>
+    </div>
+
+    <script>
+        function selectNetwork(el, ssid) {
+            document.querySelectorAll('.network-item').forEach(i => i.classList.remove('selected'));
+            el.classList.add('selected');
+            el.querySelector('input[type=radio]').checked = true;
+            document.getElementById('password').focus();
+        }
+
+        async function rescan() {
+            const list = document.getElementById('network-list');
+            list.innerHTML = '<li style="padding:0.75rem;text-align:center;color:#94a3b8;font-size:0.85rem">Scanning...</li>';
+            try {
+                const resp = await fetch('/scan');
+                const networks = await resp.json();
+                if (networks.length === 0) {
+                    list.innerHTML = '<li style="padding:0.75rem;text-align:center;color:#64748b;font-size:0.85rem">No networks found</li>';
+                    return;
+                }
+                list.innerHTML = networks.map(net => `
+                    <li class="network-item" onclick="selectNetwork(this, '${net.ssid}')">
+                        <input type="radio" name="ssid" value="${net.ssid}">
+                        <span class="network-name">
+                            ${net.ssid}
+                            ${net.saved ? '<span class="badge-saved">saved</span>' : ''}
+                        </span>
+                        <span class="network-meta">${net.signal}%</span>
+                    </li>
+                `).join('');
+            } catch (e) {
+                list.innerHTML = '<li style="padding:0.75rem;text-align:center;color:#fca5a5;font-size:0.85rem">Scan failed</li>';
+            }
+        }
+
+        document.getElementById('wifi-form').addEventListener('submit', function() {
+            const btn = document.getElementById('connect-btn');
+            btn.disabled = true;
+            btn.textContent = 'Connecting...';
+        });
+    </script>
+</body>
+</html>

@@ -1,0 +1,13 @@
+#!/bin/bash
+
+/usr/bin/kanshi &
+/usr/bin/lxsession-xdg-autostart &
+/usr/bin/squeekboard &
+/usr/bin/lwrespawn /usr/bin/pcmanfm-pi &
+/usr/bin/lwrespawn /usr/bin/wf-panel-pi &
+
+(
+  LOG_DIR="${XDG_STATE_HOME:-$HOME/.local/state}"
+  mkdir -p "$LOG_DIR"
+  /usr/local/bin/timing-talk-kiosk-autostart >>"$LOG_DIR/timing-talk-kiosk-autostart.log" 2>&1
+) &

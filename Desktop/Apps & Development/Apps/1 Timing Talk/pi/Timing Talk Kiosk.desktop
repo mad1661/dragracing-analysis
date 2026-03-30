@@ -1,0 +1,9 @@
+[Desktop Entry]
+Type=Application
+Version=1.0
+Name=Timing Talk Kiosk
+Comment=Start Timing Talk kiosk mode
+Exec=/usr/local/bin/timing-talk-kiosk-start
+Icon=web-browser
+Terminal=false
+Categories=Utility;

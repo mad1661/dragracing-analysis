@@ -1,0 +1,649 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Timing Talk</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    :root {
+      --bg: #0f172a;
+      --surface: #1e293b;
+      --surface2: #162032;
+      --border: #334155;
+      --text: #e2e8f0;
+      --text-dim: #94a3b8;
+      --accent: #38bdf8;
+      --accent-hover: #7dd3fc;
+      --success: #22c55e;
+      --error: #ef4444;
+      --warning: #f59e0b;
+    }
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      height: 100vh;
+      overflow: hidden;
+      display: flex;
+      flex-direction: column;
+    }
+    .header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 0.85rem 1.25rem;
+      border-bottom: 1px solid var(--border);
+      background: var(--surface);
+    }
+    .header h1 { font-size: 1.1rem; font-weight: 700; color: var(--accent); }
+    .header-right { display: flex; align-items: center; gap: 0.75rem; }
+    .status-dot {
+      width: 10px; height: 10px;
+      border-radius: 50%;
+      background: var(--error);
+    }
+    .status-dot.connected { background: var(--success); }
+    .status-dot.checking { background: var(--warning); animation: pulse 1s infinite; }
+    @keyframes pulse { 0%,100% { opacity: 1; } 50% { opacity: 0.4; } }
+    .user-badge {
+      font-size: 0.75rem;
+      color: var(--text-dim);
+      background: var(--bg);
+      padding: 0.2rem 0.5rem;
+      border-radius: 4px;
+    }
+    .tabs {
+      display: flex;
+      border-bottom: 1px solid var(--border);
+      background: var(--surface);
+    }
+    .tab {
+      flex: 1;
+      padding: 0.6rem;
+      text-align: center;
+      font-size: 0.8rem;
+      font-weight: 600;
+      color: var(--text-dim);
+      cursor: pointer;
+      border-bottom: 2px solid transparent;
+      transition: all 0.15s;
+    }
+    .tab:hover { color: var(--text); }
+    .tab.active { color: var(--accent); border-bottom-color: var(--accent); }
+    .content {
+      flex: 1;
+      overflow-y: auto;
+      padding: 1rem;
+    }
+    .panel { display: none; }
+    .panel.active { display: block; }
+    .section {
+      background: var(--surface);
+      border-radius: 10px;
+      padding: 1.25rem;
+      margin-bottom: 1rem;
+    }
+    .section h2 {
+      font-size: 0.8rem;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+      color: var(--text-dim);
+      margin-bottom: 0.75rem;
+    }
+    label {
+      display: block;
+      font-size: 0.8rem;
+      color: var(--text-dim);
+      margin-bottom: 0.25rem;
+      margin-top: 0.5rem;
+    }
+    label:first-of-type { margin-top: 0; }
+    input, select {
+      width: 100%;
+      padding: 0.5rem 0.65rem;
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      background: var(--bg);
+      color: var(--text);
+      font-size: 0.9rem;
+      outline: none;
+    }
+    input:focus, select:focus { border-color: var(--accent); }
+    .btn {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      padding: 0.55rem 1rem;
+      border: none;
+      border-radius: 6px;
+      font-size: 0.9rem;
+      font-weight: 600;
+      cursor: pointer;
+      transition: background 0.15s;
+      margin-top: 0.75rem;
+    }
+    .btn:disabled { opacity: 0.5; cursor: not-allowed; }
+    .btn-primary { background: var(--accent); color: var(--bg); }
+    .btn-primary:hover:not(:disabled) { background: var(--accent-hover); }
+    .btn-danger { background: var(--error); color: white; }
+    .btn-danger:hover:not(:disabled) { background: #dc2626; }
+    .btn-small { padding: 0.35rem 0.65rem; font-size: 0.8rem; margin-top: 0; }
+    .btn-outline {
+      background: none;
+      border: 1px solid var(--border);
+      color: var(--text-dim);
+    }
+    .btn-outline:hover:not(:disabled) { border-color: var(--accent); color: var(--accent); }
+    .btn-success { background: var(--success); color: white; }
+    .btn-success:hover:not(:disabled) { background: #16a34a; }
+    .search-box {
+      position: relative;
+      margin-bottom: 0.75rem;
+    }
+    .search-box input { padding-left: 2rem; }
+    .search-box::before {
+      content: "\1F50D";
+      position: absolute;
+      left: 0.65rem;
+      top: 50%;
+      transform: translateY(-50%);
+      font-size: 0.85rem;
+      opacity: 0.5;
+    }
+    .track-list {
+      list-style: none;
+      max-height: 320px;
+      overflow-y: auto;
+    }
+    .track-item {
+      display: flex;
+      align-items: center;
+      padding: 0.65rem 0.75rem;
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      margin-bottom: 0.4rem;
+      cursor: pointer;
+      transition: all 0.15s;
+    }
+    .track-item:hover { background: var(--surface2); border-color: var(--accent); }
+    .track-item.selected { border-color: var(--accent); background: #0c4a6e33; }
+    .track-info { flex: 1; }
+    .track-name { font-size: 0.95rem; font-weight: 600; }
+    .track-location { font-size: 0.8rem; color: var(--text-dim); }
+    .track-status {
+      width: 8px; height: 8px;
+      border-radius: 50%;
+      margin-right: 0.75rem;
+      flex-shrink: 0;
+    }
+    .track-status.online { background: var(--success); }
+    .track-status.offline { background: var(--border); }
+    .data-terminal {
+      background: #020617;
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      padding: 0.5rem 0.65rem;
+      font-family: 'SF Mono', 'Fira Code', monospace;
+      font-size: 0.8rem;
+      color: var(--success);
+      height: 200px;
+      overflow-y: auto;
+      white-space: pre-wrap;
+      word-break: break-all;
+    }
+    .info-row {
+      display: flex;
+      justify-content: space-between;
+      padding: 0.3rem 0;
+      font-size: 0.85rem;
+    }
+    .info-row span:first-child { color: var(--text-dim); }
+    .msg { padding: 0.5rem; border-radius: 6px; margin-top: 0.5rem; font-size: 0.85rem; }
+    .msg-error { background: #7f1d1d33; color: #fca5a5; }
+    .msg-success { background: #14532d33; color: #86efac; }
+    .msg-warning { background: #78350f33; color: #fcd34d; }
+    .hidden { display: none; }
+    .track-count {
+      font-size: 0.75rem;
+      color: var(--text-dim);
+      text-align: right;
+      margin-bottom: 0.25rem;
+    }
+    .row { display: flex; gap: 0.5rem; align-items: end; }
+    .row > * { flex: 1; }
+    .row > .btn { flex: none; }
+    .footer {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 0.5rem 1.25rem;
+      border-top: 1px solid var(--border);
+      background: var(--surface);
+      font-size: 0.75rem;
+      color: var(--text-dim);
+    }
+    .footer .server-status { display: flex; align-items: center; gap: 0.4rem; }
+    .footer .server-dot {
+      width: 6px; height: 6px;
+      border-radius: 50%;
+      background: var(--border);
+    }
+    .footer .server-dot.ok { background: var(--success); }
+    .footer .server-dot.fail { background: var(--error); }
+    .btn-quit {
+      background: none;
+      border: none;
+      color: var(--text-dim);
+      font-size: 0.75rem;
+      cursor: pointer;
+      padding: 0.2rem 0.4rem;
+      border-radius: 4px;
+    }
+    .btn-quit:hover { color: var(--error); background: #7f1d1d33; }
+    .connect-section {
+      display: flex;
+      align-items: center;
+      gap: 0.75rem;
+      padding: 0.75rem;
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      margin-bottom: 1rem;
+      background: var(--surface2);
+    }
+    .connect-info { flex: 1; }
+    .connect-info .label { font-size: 0.75rem; color: var(--text-dim); }
+    .connect-info .value { font-size: 0.85rem; font-weight: 600; }
+    .connect-info .value.ok { color: var(--success); }
+    .connect-info .value.fail { color: var(--error); }
+    .connect-info .value.checking { color: var(--warning); }
+  </style>
+</head>
+<body>
+  <div class="header">
+    <h1>Timing Talk</h1>
+    <div class="header-right">
+      <span class="user-badge hidden" id="userBadge"></span>
+      <div class="status-dot" id="statusDot" title="Disconnected"></div>
+    </div>
+  </div>
+
+  <div class="tabs" id="tabBar">
+    <div class="tab active" data-panel="connectPanel" onclick="switchTab(this)">Connect</div>
+    <div class="tab" data-panel="tracksPanel" onclick="switchTab(this)">Browse Tracks</div>
+    <div class="tab" data-panel="bridgePanel" onclick="switchTab(this)">Bridge</div>
+    <div class="tab" data-panel="dataPanel" onclick="switchTab(this)">Live Data</div>
+  </div>
+
+  <div class="content">
+    <!-- Connect Panel (replaces old Login panel) -->
+    <div class="panel active" id="connectPanel">
+      <div class="section">
+        <h2>Server Connection</h2>
+        <div class="connect-section" id="connectBox">
+          <div class="connect-info">
+            <div class="label">API Server</div>
+            <div class="value" id="serverStatusText">Not tested</div>
+          </div>
+          <button class="btn btn-primary btn-small" id="connectBtn" onclick="handleTestConnection()">Connect to Server</button>
+        </div>
+        <div id="connectMsg"></div>
+      </div>
+
+      <div class="section">
+        <h2>Sign In</h2>
+        <label>Email</label>
+        <input type="email" id="email" placeholder="you@example.com">
+        <label>Password</label>
+        <input type="password" id="password" placeholder="Password">
+        <div id="loginMsg"></div>
+        <button class="btn btn-primary" id="loginBtn" onclick="handleLogin()">Sign In</button>
+      </div>
+    </div>
+
+    <!-- Track Browser Panel -->
+    <div class="panel" id="tracksPanel">
+      <div class="section">
+        <h2>Available Tracks</h2>
+        <div class="search-box">
+          <input type="text" id="trackSearch" placeholder="Search tracks..." oninput="filterTracks()">
+        </div>
+        <div class="track-count" id="trackCount"></div>
+        <ul class="track-list" id="trackList">
+          <li style="padding:1rem;text-align:center;color:var(--text-dim)">Sign in to browse tracks</li>
+        </ul>
+        <div style="display:flex;gap:0.5rem;margin-top:0.75rem;">
+          <button class="btn btn-outline btn-small" onclick="loadTracks()">Refresh All</button>
+          <button class="btn btn-outline btn-small" onclick="loadOnlineTracks()">Online Only</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Bridge Panel -->
+    <div class="panel" id="bridgePanel">
+      <div class="section">
+        <h2>Virtual COM Port Bridge</h2>
+        <div class="info-row"><span>Selected Track</span><span id="selectedTrackName">None</span></div>
+        <div class="info-row"><span>Device ID</span><span id="selectedDeviceId">-</span></div>
+        <label>Virtual COM Port Path (leave blank for default)</label>
+        <input type="text" id="comPort" placeholder="/tmp/ttyTimingTalk">
+        <div style="display:flex; gap:0.5rem; margin-top:0.75rem;">
+          <button class="btn btn-primary" id="startBtn" onclick="startBridge()">Start Bridge</button>
+          <button class="btn btn-danger hidden" id="stopBtn" onclick="stopBridge()">Stop Bridge</button>
+        </div>
+      </div>
+      <div class="section">
+        <h2>Status</h2>
+        <div class="info-row"><span>Bridge</span><span id="bridgeStatus">Stopped</span></div>
+        <div class="info-row"><span>Messages Received</span><span id="msgCount">0</span></div>
+      </div>
+      <div class="section hidden" id="connectionInfo">
+        <h2>Connect Your Serial App</h2>
+        <div style="font-size:0.8rem;color:var(--text-dim);margin-bottom:0.75rem;">Use one of these in your serial collection app:</div>
+        <div style="background:var(--bg);border:1px solid var(--border);border-radius:6px;padding:0.75rem;margin-bottom:0.5rem;">
+          <div style="font-size:0.7rem;color:var(--text-dim);text-transform:uppercase;letter-spacing:0.05em;">Option 1 — TCP Connection (recommended)</div>
+          <div style="font-family:'SF Mono','Fira Code',monospace;font-size:0.95rem;color:var(--accent);margin-top:0.25rem;" id="tcpAddress">-</div>
+        </div>
+        <div style="background:var(--bg);border:1px solid var(--border);border-radius:6px;padding:0.75rem;margin-bottom:0.5rem;">
+          <div style="font-size:0.7rem;color:var(--text-dim);text-transform:uppercase;letter-spacing:0.05em;">Option 2 — Device Path (type into port field)</div>
+          <div style="font-family:'SF Mono','Fira Code',monospace;font-size:0.95rem;color:var(--accent);margin-top:0.25rem;" id="devicePathDisplay">-</div>
+        </div>
+        <div style="background:var(--bg);border:1px solid var(--border);border-radius:6px;padding:0.75rem;">
+          <div style="font-size:0.7rem;color:var(--text-dim);text-transform:uppercase;letter-spacing:0.05em;">Option 3 — Symlink Path</div>
+          <div style="font-family:'SF Mono','Fira Code',monospace;font-size:0.95rem;color:var(--accent);margin-top:0.25rem;" id="comPortDisplay">-</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Live Data Panel -->
+    <div class="panel" id="dataPanel">
+      <div class="section">
+        <h2>Incoming Serial Data</h2>
+        <div class="data-terminal" id="dataTerminal"></div>
+        <button class="btn btn-outline btn-small" onclick="clearTerminal()" style="margin-top:0.5rem;">Clear</button>
+      </div>
+    </div>
+  </div>
+
+  <div class="footer">
+    <div class="server-status">
+      <div class="server-dot" id="footerDot"></div>
+      <span id="footerStatus">Server: not checked</span>
+    </div>
+    <button class="btn-quit" onclick="handleQuit()">Quit App</button>
+  </div>
+
+  <script>
+    const api = window.timingtalk;
+
+    let messageCount = 0;
+    let allTracks = [];
+    let selectedDevice = null;
+    let serverConnected = false;
+
+    function switchTab(el) {
+      document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+      document.querySelectorAll('.panel').forEach(p => p.classList.remove('active'));
+      el.classList.add('active');
+      document.getElementById(el.dataset.panel).classList.add('active');
+    }
+
+    async function init() {
+      try {
+        const config = await api.getConfig();
+        if (config.email) document.getElementById('email').value = config.email;
+        if (config.comPortName) document.getElementById('comPort').value = config.comPortName;
+
+        api.onSerialData((data) => {
+          messageCount++;
+          document.getElementById('msgCount').textContent = messageCount;
+          const terminal = document.getElementById('dataTerminal');
+          terminal.textContent += `${new Date().toLocaleTimeString()} | ${data.raw}\n`;
+          terminal.scrollTop = terminal.scrollHeight;
+        });
+
+        const status = await api.getStatus();
+        if (status.firebaseConnected) {
+          onLoggedIn(config.email);
+          if (status.bridgeActive) showBridgeRunning(status.comPort, status.devicePath, status.tcpPort);
+        }
+      } catch (err) {
+        showMsg('connectMsg', 'error', 'Failed to initialize: ' + err.message);
+      }
+    }
+
+    async function handleTestConnection() {
+      const btn = document.getElementById('connectBtn');
+      const statusText = document.getElementById('serverStatusText');
+      const dot = document.getElementById('statusDot');
+
+      btn.disabled = true;
+      btn.textContent = 'Connecting...';
+      statusText.textContent = 'Checking...';
+      statusText.className = 'value checking';
+      dot.className = 'status-dot checking';
+
+      try {
+        const result = await api.testConnection();
+
+        if (result.reachable) {
+          serverConnected = true;
+          statusText.textContent = 'Connected';
+          statusText.className = 'value ok';
+          dot.className = 'status-dot connected';
+          btn.textContent = 'Connected';
+          btn.className = 'btn btn-success btn-small';
+          updateFooter(true);
+          showMsg('connectMsg', 'success', 'Server is reachable. You can now sign in.');
+        } else {
+          serverConnected = false;
+          statusText.textContent = 'Unreachable';
+          statusText.className = 'value fail';
+          dot.className = 'status-dot';
+          btn.textContent = 'Retry Connection';
+          btn.className = 'btn btn-primary btn-small';
+          updateFooter(false, result.error);
+          showMsg('connectMsg', 'error', 'Cannot reach server: ' + (result.error || `HTTP ${result.status}`));
+        }
+      } catch (err) {
+        statusText.textContent = 'Error';
+        statusText.className = 'value fail';
+        dot.className = 'status-dot';
+        btn.textContent = 'Retry Connection';
+        updateFooter(false, err.message);
+        showMsg('connectMsg', 'error', 'Connection test failed: ' + err.message);
+      }
+
+      btn.disabled = false;
+    }
+
+    function updateFooter(reachable, errorMsg) {
+      const dot = document.getElementById('footerDot');
+      const text = document.getElementById('footerStatus');
+      if (reachable) {
+        dot.className = 'server-dot ok';
+        text.textContent = 'Server: connected';
+      } else {
+        dot.className = 'server-dot fail';
+        text.textContent = 'Server: ' + (errorMsg || 'unreachable');
+      }
+    }
+
+    async function handleLogin() {
+      const email = document.getElementById('email').value.trim();
+      const password = document.getElementById('password').value;
+      const loginBtn = document.getElementById('loginBtn');
+
+      if (!email || !password) {
+        showMsg('loginMsg', 'error', 'Email and password are required');
+        return;
+      }
+
+      loginBtn.disabled = true;
+      loginBtn.textContent = 'Signing in...';
+
+      try {
+        const result = await api.login(email, password);
+        if (result.success) {
+          showMsg('loginMsg', 'success', 'Signed in!');
+          onLoggedIn(email);
+        } else {
+          showMsg('loginMsg', 'error', result.error);
+        }
+      } catch (err) {
+        showMsg('loginMsg', 'error', 'Login failed: ' + err.message);
+      }
+
+      loginBtn.disabled = false;
+      loginBtn.textContent = 'Sign In';
+    }
+
+    function showMsg(elementId, type, text) {
+      const el = document.getElementById(elementId);
+      el.className = `msg msg-${type}`;
+      el.textContent = text;
+    }
+
+    function onLoggedIn(email) {
+      const badge = document.getElementById('userBadge');
+      badge.textContent = email;
+      badge.classList.remove('hidden');
+
+      if (!serverConnected) {
+        const dot = document.getElementById('statusDot');
+        dot.className = 'status-dot connected';
+        updateFooter(true);
+      }
+
+      loadTracks();
+      const tracksTab = document.querySelector('[data-panel="tracksPanel"]');
+      switchTab(tracksTab);
+    }
+
+    async function loadTracks() {
+      const list = document.getElementById('trackList');
+      list.innerHTML = '<li style="padding:1rem;text-align:center;color:var(--text-dim)">Loading...</li>';
+
+      try {
+        allTracks = await api.getTracks();
+        renderTracks(allTracks);
+      } catch (err) {
+        list.innerHTML = '<li style="padding:1rem;text-align:center;color:var(--error)">Failed to load tracks</li>';
+      }
+    }
+
+    async function loadOnlineTracks() {
+      const list = document.getElementById('trackList');
+      list.innerHTML = '<li style="padding:1rem;text-align:center;color:var(--text-dim)">Loading online tracks...</li>';
+
+      try {
+        const online = await api.getOnlineTracks();
+        allTracks = online;
+        renderTracks(online);
+      } catch (err) {
+        list.innerHTML = '<li style="padding:1rem;text-align:center;color:var(--error)">Failed to load tracks</li>';
+      }
+    }
+
+    function filterTracks() {
+      const q = document.getElementById('trackSearch').value.toLowerCase();
+      const filtered = allTracks.filter(t =>
+        (t.name || t.trackName || '').toLowerCase().includes(q) ||
+        (t.location || t.trackLocation || '').toLowerCase().includes(q)
+      );
+      renderTracks(filtered);
+    }
+
+    function renderTracks(tracks) {
+      const list = document.getElementById('trackList');
+      const countEl = document.getElementById('trackCount');
+      countEl.textContent = `${tracks.length} track${tracks.length !== 1 ? 's' : ''}`;
+
+      if (tracks.length === 0) {
+        list.innerHTML = '<li style="padding:1rem;text-align:center;color:var(--text-dim)">No tracks found</li>';
+        return;
+      }
+
+      list.innerHTML = tracks.map(t => {
+        const name = t.name || t.trackName || t.deviceId || 'Unknown';
+        const loc = t.location || t.trackLocation || '';
+        const online = t.online ? 'online' : 'offline';
+        const deviceId = t.deviceId || t.id;
+        return `
+          <li class="track-item" onclick="selectTrack('${deviceId}', '${name.replace(/'/g, "\\'")}')">
+            <div class="track-status ${online}"></div>
+            <div class="track-info">
+              <div class="track-name">${name}</div>
+              <div class="track-location">${loc}</div>
+            </div>
+          </li>
+        `;
+      }).join('');
+    }
+
+    function selectTrack(deviceId, trackName) {
+      selectedDevice = deviceId;
+      document.getElementById('selectedTrackName').textContent = trackName;
+      document.getElementById('selectedDeviceId').textContent = deviceId.substring(0, 12) + '...';
+
+      document.querySelectorAll('.track-item').forEach(el => el.classList.remove('selected'));
+      event.currentTarget.classList.add('selected');
+
+      const bridgeTab = document.querySelector('[data-panel="bridgePanel"]');
+      switchTab(bridgeTab);
+    }
+
+    async function startBridge() {
+      if (!selectedDevice) {
+        alert('Select a track first from the Browse Tracks tab');
+        return;
+      }
+      const comPort = document.getElementById('comPort').value.trim();
+      await api.saveConfig({ comPortName: comPort });
+
+      const result = await api.startBridge(selectedDevice);
+      if (result.success) {
+        showBridgeRunning(result.port, result.devicePath, result.tcpPort);
+      } else {
+        alert('Failed to start bridge: ' + result.error);
+      }
+    }
+
+    function showBridgeRunning(portName, devicePath, tcpPort) {
+      document.getElementById('startBtn').classList.add('hidden');
+      document.getElementById('stopBtn').classList.remove('hidden');
+      document.getElementById('bridgeStatus').textContent = 'Running';
+      document.getElementById('statusDot').classList.add('connected');
+
+      const infoPanel = document.getElementById('connectionInfo');
+      infoPanel.classList.remove('hidden');
+      document.getElementById('comPortDisplay').textContent = portName || '/tmp/ttyTimingTalk';
+      document.getElementById('devicePathDisplay').textContent = devicePath || portName || '-';
+      document.getElementById('tcpAddress').textContent = tcpPort ? `127.0.0.1:${tcpPort}` : '-';
+    }
+
+    async function stopBridge() {
+      await api.stopBridge();
+      document.getElementById('startBtn').classList.remove('hidden');
+      document.getElementById('stopBtn').classList.add('hidden');
+      document.getElementById('bridgeStatus').textContent = 'Stopped';
+      document.getElementById('connectionInfo').classList.add('hidden');
+      document.getElementById('statusDot').classList.remove('connected');
+    }
+
+    function clearTerminal() {
+      document.getElementById('dataTerminal').textContent = '';
+      messageCount = 0;
+      document.getElementById('msgCount').textContent = '0';
+    }
+
+    async function handleQuit() {
+      try {
+        await api.quitApp();
+      } catch {}
+    }
+
+    init();
+  </script>
+</body>
+</html>

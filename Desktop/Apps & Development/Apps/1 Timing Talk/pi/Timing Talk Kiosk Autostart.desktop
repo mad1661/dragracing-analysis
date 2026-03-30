@@ -1,0 +1,8 @@
+[Desktop Entry]
+Type=Application
+Version=1.0
+Name=Timing Talk Kiosk Autostart
+Comment=Launch Timing Talk kiosk after desktop login
+Exec=/usr/local/bin/timing-talk-kiosk-autostart
+Terminal=false
+X-GNOME-Autostart-enabled=true

@@ -1,0 +1,15 @@
+node_modules/
+.firebase/
+__pycache__/
+*.pyc
+.DS_Store
+.env
+*.csv
+*.xlsx
+*.numbers
+*.png
+*.jpg
+*.pdf
+*.psd
+.claude/
+dist/
